@@ -9,7 +9,7 @@ def prompt_statement_type():
     user_input = input(f'Would you like to filter by one of these statement types?\n'
                        f'\t1     - Balanço Patrimonial (BP)\n'
                        f'\t2     - Demonstração do Resultado do Exercício (DRE)\n'
-                       f'\tEnter - No, download all')
+                       f'\tEnter - No, download all\n')
     match user_input:
         case '1':
             return 'Balanço Patrimonial (BP)'
@@ -23,7 +23,7 @@ def prompt_publish_date():
     user_input = input(f'Which publish dates would you like to download?\n'
                        f'\t1     - latest\n'
                        f'\t2     - oldest\n'
-                       f'\tEnter - all')
+                       f'\tEnter - all\n')
     match user_input:
         case '1':
             return 'latest'
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     pdfs_directory = os.path.join('data', 'pdfs')
     selection = input('================= CENTRAL BALANCOS =================\n\n'
                       'Please choose one of the following options:\n'
-                      '\t1 - Extract company statements info\n'
+                      '\t1 - Extract company statements and generate worksheet\n'
                       '\t2 - Download PDFs\n')
     match selection:
         case '1':
