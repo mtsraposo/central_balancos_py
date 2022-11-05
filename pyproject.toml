@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "central-balancos-py"
+version = "0.1.0"
+description = ""
+authors = ["Matheus Raposo <matheus_raposo@hotmail.com>"]
+readme = "README.md"
+packages = [{include = "central_balancos_py"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "^2.28.1"
+pandas = "^1.5.1"
+openpyxl = "^3.0.10"
+xlsxwriter = "^3.0.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
