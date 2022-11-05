@@ -1,0 +1,5 @@
+**/.idea
+**/data
+**/*.iml
+**/.DS_Store
+**/__pycache__
