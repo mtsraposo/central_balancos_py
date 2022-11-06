@@ -3,3 +3,6 @@
 *.iml
 **/.DS_Store
 **/__pycache__
+build
+dist
+main.spec

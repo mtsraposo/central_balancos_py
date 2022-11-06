@@ -1,8 +1,9 @@
 import re
 import os
+import sys
 
-from extract import extract_company_info
-from pdfs import download_pdfs
+from central_balancos_py.src.extract import extract_company_info
+from central_balancos_py.src.pdfs import download_pdfs
 
 
 def prompt_statement_type():
@@ -35,8 +36,9 @@ def prompt_publish_date():
 
 if __name__ == '__main__':
     statements_sheet_name = 'demonstracoes'
-    worksheet_path = os.path.join('data', 'demonstracoes.xlsx')
-    pdfs_directory = os.path.join('data', 'pdfs')
+    current_dir = os.path.dirname(sys.argv[0])
+    worksheet_path = os.path.join(current_dir, 'data', 'demonstracoes.xlsx')
+    pdfs_directory = os.path.join(current_dir, 'data', 'pdfs')
     selection = input('================= CENTRAL BALANCOS =================\n\n'
                       'Please choose one of the following options:\n'
                       '\t1 - Extract company statements and generate worksheet\n'
@@ -45,9 +47,10 @@ if __name__ == '__main__':
         case '1':
             limit = input('How many companies would you like to extract?\n'
                           'Enter a number or hit Enter to extract all (~8.5k):\n')
-            if limit == '':
-                extract_company_info(worksheet_path, statements_sheet_name)
-            elif re.match('^\d+$', limit):
+            limit = limit if limit != '' else None
+            if limit is None or re.match('^\d+$', limit):
+                print('Extracting company info...\nThe worksheet will be available at '
+                      f'{worksheet_path}.')
                 extract_company_info(worksheet_path, statements_sheet_name, limit)
             else:
                 raise ValueError(f'please input a valid number. "{limit}" provided')
@@ -55,7 +58,7 @@ if __name__ == '__main__':
             statement_file_exists = input(
                 f"Do you have a worksheet containing statement info "
                 f"(generated in option 1 of the previous menu) "
-                f"saved in your computer and located at {os.path.join(os.getcwd(), worksheet_path)}? [Y/n] \n")
+                f"saved in your computer and located at {worksheet_path}? [Y/n] \n")
             if statement_file_exists in ['', 'Y']:
                 input(f'Please create a new tab in the statement info worksheet '
                       f"and name it \"cnpjs\". Add the column header \"cnpj\" to cell A1 "
@@ -64,13 +67,13 @@ if __name__ == '__main__':
                 statement_type = prompt_statement_type()
                 publish_date = prompt_publish_date()
                 print('Downloading PDFs...\n'
-                      f'The files will be available at {os.path.join(os.getcwd(), pdfs_directory)} '
+                      f'The files will be available at {pdfs_directory} '
                       f'and will follow the naming convention <company_name>_<statement_type>_<publish_date>')
                 download_pdfs(pdfs_directory, worksheet_path, statements_sheet_name, statement_type, publish_date)
             else:
                 raise KeyError(f'please re-execute the application and select option 1 in the initial menu '
                                f'to generate the financial statement info worksheet and verify that it is saved at '
-                               f'{os.path.join(os.getcwd(), worksheet_path)} before proceeding.')
+                               f'{worksheet_path} before proceeding.')
 
         case _:
             print('please enter a valid option')
