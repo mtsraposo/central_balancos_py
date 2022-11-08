@@ -2,8 +2,8 @@ import re
 import os
 import sys
 
-from central_balancos_py.src.extract import extract_company_info
-from central_balancos_py.src.pdfs import download_pdfs
+from extract import extract_company_info
+from pdfs import download_pdfs
 
 
 def prompt_statement_type():

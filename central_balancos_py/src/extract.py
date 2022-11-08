@@ -96,7 +96,8 @@ def to_excel(df, path, sheet_name):
 
 
 def extract_company_info(worksheet_path, statements_sheet_name, limit=None):
+    limit = None if limit is None else int(limit)
     companies = fetch_companies()
-    statements = parse_statements(companies, limit=int(limit))
+    statements = parse_statements(companies, limit=limit)
     df = to_df(statements)
     to_excel(df, path=worksheet_path, sheet_name=statements_sheet_name)
