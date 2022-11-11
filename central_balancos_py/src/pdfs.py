@@ -5,10 +5,23 @@ import pandas as pd
 import requests
 
 
+def replace_with_underscore(to_replace):
+    return re.sub(r'[^\w\d]', '_', to_replace)
+
+
+def parse_type(full_name):
+    return re.match(r'^.*?\((.*?)\).*$', full_name)
+
+
+def parse_date(full_date):
+    return re.match(r'^(.*?)T.*$', full_date)[1].replace('-', '_')
+
+
 def build_file_name(row):
-    company_name = re.sub(r'[^\w\d]', '_', row['nomeParticipante'])
-    statement_type = 'BP' if re.match(r'^.*(BP).*$', row['tipoDemonstracao']) else 'DRE'
-    published_date = re.match(r'^(.*?)T.*$', row['dataPublicacao'])[1].replace('-', '_')
+    company_name = replace_with_underscore(row['nomeParticipante'])
+    type_accronym = parse_type(row['tipoDemonstracao'])
+    statement_type = replace_with_underscore(row['tipoDemonstracao']).lower() if not type_accronym else type_accronym[1]
+    published_date = parse_date(row['dataPublicacao'])
     return f'{company_name}_{statement_type}_{published_date}.pdf'
 
 
