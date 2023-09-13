@@ -7,10 +7,14 @@ import requests
 PAGE_SIZE = 10000
 
 
-def url_list(page, page_size):
-    return "https://centraldebalancos.estaleiro.serpro.gov.br" \
-           "/centralbalancos/servicesapi/api/Participante" \
-           f"?page={page}&pageSize={page_size}&orderBy=nome"
+def url_list(page, page_size, selected_cnpj):
+    if selected_cnpj is None:
+        return "https://centraldebalancos.estaleiro.serpro.gov.br" \
+               "/centralbalancos/servicesapi/api/Participante" \
+               f"?page={page}&pageSize={page_size}&orderBy=nome"
+    else:
+        return "https://centraldebalancos.estaleiro.serpro.gov.br" \
+               f"/centralbalancos/servicesapi/api/Participante/{selected_cnpj}"
 
 
 def url_company(company_id, page, page_size):
@@ -36,15 +40,15 @@ def extract_row(statement, cnpj):
     }
 
 
-def fetch_companies():
-    response = requests.get(url_list(1, PAGE_SIZE))
+def fetch_companies(selected_cnpj):
+    response = requests.get(url_list(1, PAGE_SIZE, selected_cnpj))
     return json.loads(response.content)['items']
 
 
-def parse_statements(companies, limit=None):
+def parse_statements(companies):
     rows = []
 
-    for company in companies[:limit]:
+    for company in companies:
         print(f"--- Extracting {company['nome']}...")
         cnpj = company['cnpj'].replace('[^0-9]', '')
 
@@ -95,9 +99,9 @@ def to_excel(df, path, sheet_name):
         auto_adjust_columns(df, writer, sheet_name)
 
 
-def extract_company_info(worksheet_path, statements_sheet_name, limit=None):
-    limit = None if limit is None else int(limit)
-    companies = fetch_companies()
-    statements = parse_statements(companies, limit=limit)
+def extract_company_info(worksheet_path, statements_sheet_name, selected_cnpj=None):
+    selected_cnpj = None if selected_cnpj is None else int(selected_cnpj)
+    companies = fetch_companies(selected_cnpj)
+    statements = parse_statements(companies)
     df = to_df(statements)
     to_excel(df, path=worksheet_path, sheet_name=statements_sheet_name)
