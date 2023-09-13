@@ -69,6 +69,10 @@ def handle_extraction(env):
         print('Extracting company info...\nThe worksheet will be available at '
               f"{env['worksheet_path']}.")
         extract_company_info(env['worksheet_path'], env['statements_sheet_name'], selected_cnpj)
+        download_now = input(
+            '====== Extracted ======\nWould you like to download PDFs for all extracted documents now? [Y/n]')
+        if download_now in ['', 'Y']:
+            handle_download(env)
     else:
         raise ValueError(f'please input a valid number. "{selected_cnpj}" provided')
 
@@ -79,7 +83,8 @@ def handle_download(env):
         f"(generated in option 1 of the previous menu) "
         f"saved in your computer and located at {env['worksheet_path']}? [Y/n] \n")
     if statement_file_exists in ['', 'Y']:
-        input(f'Please create a new tab in the statement info worksheet '
+        input(f'If you would like to download all extracted statements, just hit enter.'
+              f'Otherwise, please create a new tab in the statement info worksheet '
               f"and name it \"cnpjs\". Add the column header \"cnpj\" to cell A1 "
               f"and fill in the remaining A-column cells with the list of CNPJs "
               f"you would like to download PDFs from. Hit Enter when you're ready.\n")

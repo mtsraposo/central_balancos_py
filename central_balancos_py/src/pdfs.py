@@ -26,12 +26,13 @@ def build_file_name(row):
 
 
 def filter_cnpjs(worksheet_path, statements_sheet_name):
-    cnpjs = list(pd.read_excel(worksheet_path, sheet_name='cnpjs')['cnpj'].values)
-    cnpjs = [re.sub('[^\d]', '', str(cnpj)) for cnpj in cnpjs]
-
     statements = pd.read_excel(worksheet_path, sheet_name=statements_sheet_name).ffill()
     statements['cnpj'] = statements['cnpj'].astype('string')
-    return statements[statements['cnpj'].isin(cnpjs)]
+    if 'cnpjs' in pd.ExcelFile(worksheet_path).sheet_names:
+        cnpjs = pd.read_excel(worksheet_path, sheet_name='cnpjs')['cnpj'].values.tolist()
+        cnpjs = [re.sub('[^\d]', '', str(cnpj)) for cnpj in cnpjs]
+        return statements[statements['cnpj'].isin(cnpjs)]
+    return statements
 
 
 def filter_types(statements, statement_type):
