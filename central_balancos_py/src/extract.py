@@ -12,9 +12,8 @@ def url_list(page, page_size, selected_cnpj):
         return "https://centraldebalancos.estaleiro.serpro.gov.br" \
                "/centralbalancos/servicesapi/api/Participante" \
                f"?page={page}&pageSize={page_size}&orderBy=nome"
-    else:
-        return "https://centraldebalancos.estaleiro.serpro.gov.br" \
-               f"/centralbalancos/servicesapi/api/Participante/{selected_cnpj}"
+    return "https://centraldebalancos.estaleiro.serpro.gov.br" \
+           f"/centralbalancos/servicesapi/api/Participante/{selected_cnpj}"
 
 
 def url_company(company_id, page, page_size):
