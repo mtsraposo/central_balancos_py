@@ -1,10 +1,14 @@
 # Central Balanços
 
-To set up Google API authentication, 
-follow this [guide](https://github.com/gimite/google-drive-ruby/blob/master/doc/authorization.md```).
+## How to run
+- run the binary file (e.g. central_balancos_m1_mac) - choose the one corresponding to your OS:
+```zsh
+dist/central_balancos_m1_mac
+```
+- it normally takes 10-20 seconds for the application to start up, because of the way it is bundled.
 
-Contrary to what the guide recommends, in the `Create Credentials` step, 
-select `Web Application` instead of `Other`, as it's no longer available.   
-
-
-
+## How to bundle
+If none of the binaries match your OS, bundle the project again, by running:
+```zsh
+chmod +x bundle.sh && bundle.sh 
+```
