@@ -1,5 +1,6 @@
 import json
 import os
+import logging
 
 import pandas as pd
 import requests
@@ -48,7 +49,7 @@ def parse_statements(companies):
     rows = []
 
     for company in companies:
-        print(f"--- Extracting {company['nome']}...")
+        logging.info(f"--- Extracting {company['nome']}...")
         cnpj = company['cnpj'].replace('[^0-9]', '')
 
         url = url_company(company['id'], 1, PAGE_SIZE)
