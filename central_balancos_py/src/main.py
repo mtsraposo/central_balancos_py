@@ -11,6 +11,7 @@ reset = "\x1b[0m"
 logging.basicConfig(level=logging.INFO,
                     format=f"{green}%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d){reset}")
 
+logger = logging.getLogger(__name__)
 
 def prompt_statement_type():
     user_input = input(f'Would you like to filter by one of these statement types?\n'
@@ -51,7 +52,7 @@ def config():
         raise RuntimeError('Please run this script from the root folder of the project '
                            'if you are running it in script mode'
                            'or from the src folder if you are in binary mode.')
-    logging.info(f'Working directory is: {current_dir}')
+    logger.info(f'Working directory is: {current_dir}')
     worksheet_path = os.path.join(current_dir, 'data', 'demonstracoes.xlsx')
     pdfs_directory = os.path.join(current_dir, 'data', 'pdfs')
     return {
@@ -73,7 +74,7 @@ def handle_extraction(env):
     )
     selected_cnpj = selected_cnpj if selected_cnpj != '' else None
     if selected_cnpj is None or re.match('^\d+$', selected_cnpj):
-        logging.info('Extracting company info...\nThe worksheet will be available at '
+        logger.info('Extracting company info...\nThe worksheet will be available at '
                      f"{env['worksheet_path']}.")
         extract_company_info(
             worksheet_path=['worksheet_path'],
@@ -101,7 +102,7 @@ def handle_download(env):
               f"you would like to download PDFs from. Hit Enter when you're ready.\n")
         statement_type = prompt_statement_type()
         publish_date = prompt_publish_date()
-        logging.info('Downloading PDFs...\n'
+        logger.info('Downloading PDFs...\n'
                      f"The files will be available at {env['pdfs_directory']} "
                      f'and will follow the naming convention <company_name>_<statement_type>_<publish_date>')
         download_pdfs(env['pdfs_directory'], env['worksheet_path'], env['statements_sheet_name'],
@@ -124,4 +125,4 @@ if __name__ == '__main__':
         case '2':
             handle_download(env)
         case _:
-            logging.warning('please enter a valid option (1 or 2)')
+            logger.warning('please enter a valid option (1 or 2)')

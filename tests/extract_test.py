@@ -4,7 +4,19 @@ from unittest.mock import patch
 import pytest
 import requests
 
-from central_balancos_py.src.extract import fetch_companies, url_list
+from central_balancos_py.src.client.error_handler import ErrorHandler
+from central_balancos_py.src.client.http import HttpClient
+from central_balancos_py.src.extract import url_company, url_list, extract_row, try_parse_statement, maybe_retry_parse, \
+    parse_statements, fetch_companies
+
+import support.factory as factory
+
+logging.basicConfig(level=logging.INFO,
+                    format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
+
+logger = logging.getLogger(__name__)
+
+http_client = HttpClient(error_handler=ErrorHandler(logger=logger))
 
 
 class MockResponse(requests.Response):
@@ -28,9 +40,16 @@ def test_url_list():
            "/centralbalancos/servicesapi/api/Participante" \
            f"?page={page}&pageSize={page_size}&orderBy=nome" == url_list(page, page_size, None)
 
-    cnpj = 12345670000189
+    cnpj = '12345670000189'
     assert "https://centraldebalancos.estaleiro.serpro.gov.br" \
            f"/centralbalancos/servicesapi/api/Participante/{cnpj}" == url_list(None, None, cnpj)
+
+
+def test_url_company():
+    company_id, page, page_size = 1, 1, 1
+    assert "https://centraldebalancos.estaleiro.serpro.gov.br" \
+           "/centralbalancos/servicesapi/api/Demonstracao" \
+           f"/{company_id}/0/0?page={page}&pageSize={page_size}" == url_company(company_id, page, page_size)
 
 
 def test_fetch_companies_success_all():
@@ -43,14 +62,14 @@ def test_fetch_companies_success_all():
                  'totalCount': 4}
     with patch('central_balancos_py.src.extract.requests.get') as mock_get:
         mock_get.return_value = mocked_requests_get(json_data, status_code)
-        items = fetch_companies(cnpj)
+        items = fetch_companies(http_client, cnpj)
         assert len(items) == 4
         for item in items:
             assert item.keys() == {'id', 'cnpj', 'nome'}
 
 
 def test_fetch_companies_success_single():
-    cnpj = 13385440000156
+    cnpj = '13385440000156'
     status_code = 200
     json_data = {
         'items': [
@@ -60,7 +79,7 @@ def test_fetch_companies_success_single():
     }
     with patch('central_balancos_py.src.extract.requests.get') as mock_get:
         mock_get.return_value = mocked_requests_get(json_data, status_code)
-        items = fetch_companies(cnpj)
+        items = fetch_companies(http_client, cnpj)
         assert len(items) == 1
         for item in items:
             assert item.keys() == {'id', 'cnpj', 'nome'}
@@ -73,8 +92,97 @@ def test_fetch_companies_error(caplog):
         with patch('central_balancos_py.src.extract.requests.get') as mock_get:
             mock_get.return_value = mocked_requests_get({}, status_code)
             with pytest.raises(requests.HTTPError) as exception:
-                fetch_companies(cnpj)
+                fetch_companies(http_client, cnpj)
                 assert f"HTTP error with status code {status_code}:" in caplog.text
+
+
+def test_extract_row():
+    assert factory.row() == extract_row(factory.statement(), '13385440000156')
+
+
+def test_try_parse_statement_success():
+    status_code = 200
+    json_data = {
+        'items': [factory.statement()],
+        'totalCount': 1
+    }
+    with patch('central_balancos_py.src.extract.requests.get') as mock_get:
+        mock_get.return_value = mocked_requests_get(json_data, status_code)
+        assert factory.row() == try_parse_statement(factory.company(), http_client)
+
+
+def test_try_parse_statement_error(caplog):
+    fake_company = {'id': -1, 'cnpj': '12345670000890', 'nome': 'FANTASY'}
+    status_code = 404
+    json_data = {}
+    with caplog.at_level(logging.ERROR):
+        with patch('central_balancos_py.src.extract.requests.get') as mock_get:
+            mock_get.return_value = mocked_requests_get(json_data, status_code)
+            assert try_parse_statement(fake_company, http_client) is None
+            assert f"Failed to extract" in caplog.text
+
+
+def test_maybe_retry_parse_noop():
+    assert [] == maybe_retry_parse([], http_client, 0)
+
+
+def test_maybe_retry_parse_execution():
+    status_code = 200
+    json_data = {
+        'items': [factory.statement()],
+        'totalCount': 1
+    }
+    with patch('central_balancos_py.src.extract.requests.get') as mock_get:
+        mock_get.return_value = mocked_requests_get(json_data, status_code)
+        assert [factory.row()] == maybe_retry_parse([factory.company()], http_client, 0)
+
+
+def test_parse_statements_success():
+    status_code = 200
+    json_data = {
+        'items': [factory.statement(), factory.statement()],
+        'totalCount': 2
+    }
+    companies = [factory.company(), factory.company()]
+    rows = [factory.row(), factory.row()]
+    with patch('central_balancos_py.src.extract.requests.get') as mock_get:
+        mock_get.return_value = mocked_requests_get(json_data, status_code)
+        assert rows == parse_statements(companies, http_client)
+
+
+def test_parse_statements_success_after_retry():
+    state = {'retry_count': 0}
+
+    def try_parse_statement_mock(_company, _client):
+        if state['retry_count'] == 0:
+            state['retry_count'] += 1
+            return None
+        return factory.row()
+
+    companies = [factory.company(), factory.company()]
+    rows = [factory.row(), factory.row()]
+    with patch('central_balancos_py.src.extract.try_parse_statement') as mock_parse, patch(
+            'central_balancos_py.src.extract.retry_delay') as mock_delay:
+        mock_delay.return_value = 0
+        mock_parse.side_effect = try_parse_statement_mock
+        assert rows == parse_statements(companies, http_client)
+
+
+def test_parse_statements_error(caplog):
+    status_code = 404
+    json_data = {
+        'items': [],
+        'totalCount': 0
+    }
+    companies = [factory.company(), factory.company()]
+    rows = []
+    with caplog.at_level(logging.INFO):
+        with patch('central_balancos_py.src.extract.requests.get') as mock_get, patch(
+                'central_balancos_py.src.extract.retry_delay') as mock_delay:
+            mock_get.return_value = mocked_requests_get(json_data, status_code)
+            mock_delay.return_value = 0
+            assert rows == parse_statements(companies, http_client)
+            assert f"Retrying parse" in caplog.text
 
 
 def test_extract_company_info():

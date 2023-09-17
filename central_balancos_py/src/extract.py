@@ -1,6 +1,6 @@
-import json
 import logging
 import os
+import time
 
 import pandas as pd
 import requests
@@ -13,23 +13,7 @@ logging.basicConfig(level=logging.INFO,
 
 logger = logging.getLogger(__name__)
 
-ERROR_MESSAGE = {
-    403: 'WAF limit exceeded.',
-    409: 'cancelReplace order partially succeeded.',
-    418: 'IP auto-banned.',
-    429: 'rate limit exceeded.',
-    500: 'Internal server error.\n' +
-         'It is important to NOT treat this as a failure operation;\n' +
-         'the execution status is UNKNOWN and could have been a success.'
-}
-
-
-def handle_http_error(http_err: requests.exceptions.RequestException):
-    status_code = http_err.response.status_code
-    message = f"HTTP error with status code {status_code}:{ERROR_MESSAGE.get(status_code, '')}"
-    logger.error(f'{message}\nError: {http_err}')
-
-
+MAX_RETRIES = 3
 PAGE_SIZE = 10000
 
 
@@ -65,28 +49,57 @@ def extract_row(statement, cnpj):
     }
 
 
-def fetch_companies(selected_cnpj):
-    client = HttpClient(error_handler=ErrorHandler(logger=logger))
-    response = client.get(url_list(1, PAGE_SIZE, selected_cnpj))
+def fetch_companies(http_client, selected_cnpj):
+    url = url_list(1, PAGE_SIZE, selected_cnpj)
+    response = http_client.get(url)
     if response is None:
         raise requests.HTTPError('Failed to fetch companies')
     return response.json()['items']
 
 
-def parse_statements(companies):
+def try_parse_statement(company, http_client):
+    logger.info(f"--- Extracting {company['nome']}...")
+
+    url = url_company(company['id'], 1, PAGE_SIZE)
+    res = http_client.get(url)
+    if res is None:
+        logger.error(f"Failed to extract {company['nome']}. Queueing for retry.")
+        return
+
+    cnpj = company['cnpj'].replace('[^0-9]', '')
+    statements = res.json()['items']
+    for statement in statements:
+        row = extract_row(statement, cnpj)
+        return row
+
+
+def retry_delay(retry_count):
+    return 2 ** retry_count
+
+
+def maybe_retry_parse(retry_queue, http_client, retry_count):
+    should_retry = len(retry_queue) > 0 and retry_count < MAX_RETRIES
+    if should_retry:
+        delay = retry_delay(retry_count)
+        logger.info(f'Retrying parse in {delay} seconds')
+        time.sleep(delay)
+        return parse_statements(retry_queue, http_client, retry_count + 1)
+    return []
+
+
+def parse_statements(companies, http_client, retry_count=0):
     rows = []
+    retry_queue = []
 
     for company in companies:
-        logger.info(f"--- Extracting {company['nome']}...")
-        cnpj = company['cnpj'].replace('[^0-9]', '')
+        row = try_parse_statement(company, http_client)
+        if row is None:
+            retry_queue.append(company)
+            continue
+        rows.append(row)
 
-        url = url_company(company['id'], 1, PAGE_SIZE)
-        res = requests.get(url)
-        statements = json.loads(res.content)['items']
-
-        for statement in statements:
-            row = extract_row(statement, cnpj)
-            rows.append(row)
+    recovered = maybe_retry_parse(retry_queue, http_client, retry_count)
+    rows.extend(recovered)
 
     return rows
 
@@ -128,8 +141,9 @@ def to_excel(df, path, sheet_name):
 
 
 def extract_company_info(worksheet_path, statements_sheet_name, selected_cnpj=None):
+    http_client = HttpClient(error_handler=ErrorHandler(logger=logger))
     selected_cnpj = None if selected_cnpj is None else int(selected_cnpj)
-    companies = fetch_companies(selected_cnpj)
-    statements = parse_statements(companies)
+    companies = fetch_companies(http_client, selected_cnpj)
+    statements = parse_statements(companies, http_client)
     df = to_df(statements)
     to_excel(df, path=worksheet_path, sheet_name=statements_sheet_name)
