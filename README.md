@@ -12,3 +12,8 @@ If none of the binaries match your OS, bundle the project again, by running:
 ```zsh
 chmod +x bundle.sh && ./bundle.sh 
 ```
+
+## How to run the tests
+```zsh
+bin/test
+```

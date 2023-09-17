@@ -4,7 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Matheus Raposo <matheus_raposo@hotmail.com>"]
 readme = "README.md"
-packages = [{include = "central_balancos_py"}]
+packages = [{ include = "central_balancos_py" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -13,7 +13,7 @@ pandas = "^2.1.0"
 openpyxl = "^3.1.2"
 xlsxwriter = "^3.1.3"
 pytest = "^7.4.2"
-
+pytest-cov = "^4.1.0"
 
 [build-system]
 requires = ["poetry-core"]
