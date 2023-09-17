@@ -1,9 +1,34 @@
 import json
-import os
 import logging
+import os
 
 import pandas as pd
 import requests
+
+from central_balancos_py.src.client.error_handler import ErrorHandler
+from central_balancos_py.src.client.http import HttpClient
+
+logging.basicConfig(level=logging.INFO,
+                    format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
+
+logger = logging.getLogger(__name__)
+
+ERROR_MESSAGE = {
+    403: 'WAF limit exceeded.',
+    409: 'cancelReplace order partially succeeded.',
+    418: 'IP auto-banned.',
+    429: 'rate limit exceeded.',
+    500: 'Internal server error.\n' +
+         'It is important to NOT treat this as a failure operation;\n' +
+         'the execution status is UNKNOWN and could have been a success.'
+}
+
+
+def handle_http_error(http_err: requests.exceptions.RequestException):
+    status_code = http_err.response.status_code
+    message = f"HTTP error with status code {status_code}:{ERROR_MESSAGE.get(status_code, '')}"
+    logger.error(f'{message}\nError: {http_err}')
+
 
 PAGE_SIZE = 10000
 
@@ -41,15 +66,18 @@ def extract_row(statement, cnpj):
 
 
 def fetch_companies(selected_cnpj):
-    response = requests.get(url_list(1, PAGE_SIZE, selected_cnpj))
-    return json.loads(response.content)['items']
+    client = HttpClient(error_handler=ErrorHandler(logger=logger))
+    response = client.get(url_list(1, PAGE_SIZE, selected_cnpj))
+    if response is None:
+        raise requests.HTTPError('Failed to fetch companies')
+    return response.json()['items']
 
 
 def parse_statements(companies):
     rows = []
 
     for company in companies:
-        logging.info(f"--- Extracting {company['nome']}...")
+        logger.info(f"--- Extracting {company['nome']}...")
         cnpj = company['cnpj'].replace('[^0-9]', '')
 
         url = url_company(company['id'], 1, PAGE_SIZE)

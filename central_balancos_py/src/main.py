@@ -75,7 +75,11 @@ def handle_extraction(env):
     if selected_cnpj is None or re.match('^\d+$', selected_cnpj):
         logging.info('Extracting company info...\nThe worksheet will be available at '
                      f"{env['worksheet_path']}.")
-        extract_company_info(env['worksheet_path'], env['statements_sheet_name'], selected_cnpj)
+        extract_company_info(
+            worksheet_path=['worksheet_path'],
+            statements_sheet_name=env['statements_sheet_name'],
+            selected_cnpj=selected_cnpj
+        )
         download_now = input(
             '====== Extracted ======\nWould you like to download PDFs for all extracted documents now? [Y/n]')
         if download_now in ['', 'Y']:
