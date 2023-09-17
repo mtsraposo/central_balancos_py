@@ -69,8 +69,7 @@ def try_parse_statement(company, http_client):
     cnpj = company['cnpj'].replace('[^0-9]', '')
     statements = res.json()['items']
     for statement in statements:
-        row = extract_row(statement, cnpj)
-        return row
+        return extract_row(statement, cnpj)
 
 
 def retry_delay(retry_count):

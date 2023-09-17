@@ -16,10 +16,10 @@ def statement():
             'nome1': None, 'nome2': None}
 
 
-def row():
+def row(name=None, cnpj=None):
     return {
-        'nomeParticipante': 'ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.',
-        'cnpj': '13385440000156',
+        'nomeParticipante': name or 'ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.',
+        'cnpj': cnpj or '13385440000156',
         'tipoDemonstracao': 'Demonstrações Contábeis Completas (DCC)',
         'status': 'Publicado',
         'dataFim': '2022-12-31T00:00:00',

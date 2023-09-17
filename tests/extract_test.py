@@ -1,13 +1,14 @@
 import logging
 from unittest.mock import patch
 
+import pandas as pd
 import pytest
 import requests
 
 from central_balancos_py.src.client.error_handler import ErrorHandler
 from central_balancos_py.src.client.http import HttpClient
 from central_balancos_py.src.extract import url_company, url_list, extract_row, try_parse_statement, maybe_retry_parse, \
-    parse_statements, fetch_companies
+    parse_statements, transpose, to_df, fetch_companies
 
 import support.factory as factory
 
@@ -185,5 +186,37 @@ def test_parse_statements_error(caplog):
             assert f"Retrying parse" in caplog.text
 
 
-def test_extract_company_info():
-    pass
+def test_transpose():
+    rows = [factory.row('Google', '12345670000890'), factory.row('Apple', '23456700008901')]
+    assert {
+               'nomeParticipante': ['Google', 'Apple'],
+               'cnpj': ['12345670000890', '23456700008901'],
+               'tipoDemonstracao': ['Demonstrações Contábeis Completas (DCC)',
+                                    'Demonstrações Contábeis Completas (DCC)'],
+               'status': ['Publicado', 'Publicado'],
+               'dataFim': ['2022-12-31T00:00:00', '2022-12-31T00:00:00'],
+               'dataPublicacao': ['2023-06-21T11:24:32.34', '2023-06-21T11:24:32.34'],
+               'pdf': [
+                   'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820',
+                   'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820']
+           } == transpose(rows)
+
+
+def test_to_df():
+    rows = [factory.row('Google', '12345670000890'), factory.row('Apple', '23456700008901')]
+    expected = pd.DataFrame({
+        'nomeParticipante': ['Apple', 'Google'],
+        'tipoDemonstracao': ['Demonstrações Contábeis Completas (DCC)',
+                             'Demonstrações Contábeis Completas (DCC)'],
+        'dataPublicacao': ['2023-06-21T11:24:32.34', '2023-06-21T11:24:32.34'],
+        'cnpj': ['23456700008901', '12345670000890'],
+        'status': ['Publicado', 'Publicado'],
+        'dataFim': ['2022-12-31T00:00:00', '2022-12-31T00:00:00'],
+        'pdf': [
+            'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820',
+            'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820']
+    }).set_index(['nomeParticipante', 'tipoDemonstracao', 'dataPublicacao'])
+    assert expected.equals(to_df(rows))
+
+    def test_extract_company_info():
+        pass
