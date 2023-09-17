@@ -10,7 +10,7 @@ import tests.support.factory as factory
 from central_balancos_py.src.client.error_handler import ErrorHandler
 from central_balancos_py.src.client.http import HttpClient
 from central_balancos_py.src.extract import url_company, url_list, extract_row, try_parse_statement, maybe_retry_parse, \
-    parse_statements, transpose, to_df, to_excel, fetch_companies
+    parse_statements, transpose, to_df, to_excel, fetch_companies, extract_company_info
 
 logging.basicConfig(level=logging.INFO,
                     format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
@@ -18,6 +18,16 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 http_client = HttpClient(error_handler=ErrorHandler(logger=logger))
+
+
+@pytest.fixture(scope="session", autouse=True)
+def on_exit():
+    print("Setting up resources...")
+    yield
+    print("Tearing down resources...")
+    path = os.path.join(os.getcwd(), 'demonstracoes.xlsx')
+    if os.path.exists(path):
+        os.remove(path)
 
 
 class MockResponse(requests.Response):
@@ -234,6 +244,50 @@ def test_to_excel():
 
     assert saved.equals(expected)
 
+    os.remove(path)
+
 
 def test_extract_company_info():
-    pass
+    status_code = 200
+    companies_json_data = {
+        'items': [
+            {'id': 635, 'cnpj': '13385440000156', 'nome': 'ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.'}
+        ],
+        'totalCount': 1
+    }
+    statements_json_data = {
+        'items': [factory.statement()],
+        'totalCount': 1
+    }
+
+    def multi_mock_requests_get(url, **_kwargs):
+        if 'Participante' in url:
+            return mocked_requests_get(companies_json_data, status_code)
+        return mocked_requests_get(statements_json_data, status_code)
+
+    expected = pd.DataFrame({
+        'nomeParticipante': ['ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.'],
+        'tipoDemonstracao': ['Demonstrações Contábeis Completas (DCC)'],
+        'dataPublicacao': ['2023-06-21T11:24:32.34'],
+        'cnpj': ['13385440000156'],
+        'status': ['Publicado'],
+        'dataFim': ['2022-12-31T00:00:00'],
+        'pdf': [
+            'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820'
+        ]
+    })
+    expected['cnpj'] = expected['cnpj'].astype('string')
+
+    with patch('central_balancos_py.src.extract.requests.get') as mock_get:
+        mock_get.side_effect = multi_mock_requests_get
+
+        path = os.path.join(os.getcwd(), 'demonstracoes.xlsx')
+        sheet_name = 'demonstracoes'
+        extract_company_info(path, sheet_name)
+
+        saved = pd.read_excel(path, sheet_name=sheet_name)
+        saved['cnpj'] = saved['cnpj'].astype('string')
+
+        assert saved.equals(expected)
+
+    os.remove(path)
