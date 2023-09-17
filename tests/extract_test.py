@@ -1,16 +1,16 @@
 import logging
+import os
 from unittest.mock import patch
 
 import pandas as pd
 import pytest
 import requests
 
+import tests.support.factory as factory
 from central_balancos_py.src.client.error_handler import ErrorHandler
 from central_balancos_py.src.client.http import HttpClient
 from central_balancos_py.src.extract import url_company, url_list, extract_row, try_parse_statement, maybe_retry_parse, \
-    parse_statements, transpose, to_df, fetch_companies
-
-import support.factory as factory
+    parse_statements, transpose, to_df, to_excel, fetch_companies
 
 logging.basicConfig(level=logging.INFO,
                     format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
@@ -218,5 +218,22 @@ def test_to_df():
     }).set_index(['nomeParticipante', 'tipoDemonstracao', 'dataPublicacao'])
     assert expected.equals(to_df(rows))
 
-    def test_extract_company_info():
-        pass
+
+def test_to_excel():
+    path = os.path.join(os.getcwd(), 'demonstracoes.xlsx')
+    rows = [factory.row('Google', '12345670000890'), factory.row('Apple', '23456700008901')]
+    df = to_df(rows)
+    sheet_name = 'demonstracoes'
+
+    to_excel(df, path, sheet_name)
+
+    saved = pd.read_excel(path, sheet_name=sheet_name)
+    saved['cnpj'] = saved['cnpj'].astype('string')
+    expected = df.reset_index()
+    expected['cnpj'] = saved['cnpj'].astype('string')
+
+    assert saved.equals(expected)
+
+
+def test_extract_company_info():
+    pass

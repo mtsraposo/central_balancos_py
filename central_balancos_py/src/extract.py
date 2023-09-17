@@ -119,24 +119,14 @@ def to_df(rows):
             .sort_values(by=['nomeParticipante', 'tipoDemonstracao', 'dataPublicacao']))
 
 
-def auto_adjust_columns(df, writer, sheet_name):
-    worksheet = writer.sheets[sheet_name]
-    for idx, col in enumerate(df.reset_index()):
-        series = df.reset_index()[col]
-        max_len = max((
-            series.astype(str).map(len).max(),
-            len(str(series.name))
-        )) + 1
-        worksheet.set_column(idx, idx, max_len)
-
-
 def to_excel(df, path, sheet_name):
     folder = os.path.join(os.path.dirname(path))
     os.makedirs(folder, exist_ok=True)
 
     with pd.ExcelWriter(path, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name=sheet_name)
-        auto_adjust_columns(df, writer, sheet_name)
+        worksheet = writer.sheets[sheet_name]
+        worksheet.autofit()
 
 
 def extract_company_info(worksheet_path, statements_sheet_name, selected_cnpj=None):
