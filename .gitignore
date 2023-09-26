@@ -1,5 +1,5 @@
 **/.idea
-**/data
+central_balancos_py/src/data
 **/*.iml
 **/.DS_Store
 **/__pycache__

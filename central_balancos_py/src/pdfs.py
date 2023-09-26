@@ -6,7 +6,7 @@ import requests
 
 
 def replace_with_underscore(to_replace):
-    return re.sub(r'[^\w\d]', '_', to_replace)
+    return re.sub(r'\W', '_', to_replace)
 
 
 def parse_type(full_name):
@@ -30,7 +30,7 @@ def filter_cnpjs(worksheet_path, statements_sheet_name):
     statements['cnpj'] = statements['cnpj'].astype('string')
     if 'cnpjs' in pd.ExcelFile(worksheet_path).sheet_names:
         cnpjs = pd.read_excel(worksheet_path, sheet_name='cnpjs')['cnpj'].values.tolist()
-        cnpjs = [re.sub('[^\d]', '', str(cnpj)) for cnpj in cnpjs]
+        cnpjs = [re.sub('\D', '', str(cnpj)) for cnpj in cnpjs]
         return statements[statements['cnpj'].isin(cnpjs)]
     return statements
 
