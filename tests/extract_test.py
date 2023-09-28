@@ -19,15 +19,15 @@ logger = logging.getLogger(__name__)
 
 http_client = HttpClient(error_handler=ErrorHandler(logger=logger))
 
+WORKSHEET_PATH = os.path.join(os.getcwd(), 'demonstracoes.xlsx')
 
 @pytest.fixture(scope="session", autouse=True)
 def on_exit():
     print("Setting up resources...")
     yield
     print("Tearing down resources...")
-    path = os.path.join(os.getcwd(), 'demonstracoes.xlsx')
-    if os.path.exists(path):
-        os.remove(path)
+    if os.path.exists(WORKSHEET_PATH):
+        os.remove(WORKSHEET_PATH)
 
 
 class MockResponse(requests.Response):
@@ -230,21 +230,20 @@ def test_to_df():
 
 
 def test_to_excel():
-    path = os.path.join(os.getcwd(), 'demonstracoes.xlsx')
     rows = [factory.row('Google', '12345670000890'), factory.row('Apple', '23456700008901')]
     df = to_df(rows)
     sheet_name = 'demonstracoes'
 
-    to_excel(df, path, sheet_name)
+    to_excel(df, WORKSHEET_PATH, sheet_name)
 
-    saved = pd.read_excel(path, sheet_name=sheet_name)
+    saved = pd.read_excel(WORKSHEET_PATH, sheet_name=sheet_name)
     saved['cnpj'] = saved['cnpj'].astype('string')
     expected = df.reset_index()
     expected['cnpj'] = saved['cnpj'].astype('string')
 
     assert saved.equals(expected)
 
-    os.remove(path)
+    os.remove(WORKSHEET_PATH)
 
 
 def test_extract_company_info():
@@ -281,13 +280,12 @@ def test_extract_company_info():
     with patch('central_balancos_py.src.extract.requests.get') as mock_get:
         mock_get.side_effect = multi_mock_requests_get
 
-        path = os.path.join(os.getcwd(), 'demonstracoes.xlsx')
         sheet_name = 'demonstracoes'
-        extract_company_info(path, sheet_name)
+        extract_company_info(WORKSHEET_PATH, sheet_name)
 
-        saved = pd.read_excel(path, sheet_name=sheet_name)
+        saved = pd.read_excel(WORKSHEET_PATH, sheet_name=sheet_name)
         saved['cnpj'] = saved['cnpj'].astype('string')
 
         assert saved.equals(expected)
 
-    os.remove(path)
+    os.remove(WORKSHEET_PATH)

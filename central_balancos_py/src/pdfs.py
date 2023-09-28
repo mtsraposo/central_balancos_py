@@ -1,8 +1,17 @@
+import logging
 import os
 import re
 
 import pandas as pd
 import requests
+
+from central_balancos_py.src.client.error_handler import ErrorHandler
+from central_balancos_py.src.client.http import HttpClient
+
+logging.basicConfig(level=logging.INFO,
+                    format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
+
+logger = logging.getLogger(__name__)
 
 
 def replace_with_underscore(to_replace):
@@ -55,13 +64,21 @@ def filter_statements(worksheet_path, statements_sheet_name, statement_type='', 
     return statements
 
 
+def fetch_pdf(url):
+    http_client = HttpClient(error_handler=ErrorHandler(logger=logger))
+    response = http_client.get(url)
+    if response is None:
+        raise requests.HTTPError(f'Failed to fetch PDF: {url}')
+    return response.content
+
+
 def fetch_pdfs(statements, pdfs_directory):
     os.makedirs(pdfs_directory, exist_ok=True)
     for _index, row in statements.iterrows():
-        response = requests.get(row['pdf'])
+        pdf = fetch_pdf(url=row['pdf'])
         file_name = build_file_name(row)
         with open(os.path.join(pdfs_directory, file_name), 'wb') as f:
-            f.write(response.content)
+            f.write(pdf)
 
 
 def download_pdfs(pdfs_directory, worksheet_path, statements_sheet_name, statement_type, publish_date):

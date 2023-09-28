@@ -1,16 +1,46 @@
+import logging
 import os
+from unittest.mock import patch
+
+from unittest import TestCase
+
+import pytest
 
 import pandas as pd
 
+from central_balancos_py.src.client.error_handler import ErrorHandler
+from central_balancos_py.src.client.http import HttpClient
+import central_balancos_py.src.pdfs as pdfs
 from tests.support import factory
 
-from central_balancos_py.src.pdfs import filter_cnpjs, filter_types, filter_dates, filter_statements
+logging.basicConfig(level=logging.INFO,
+                    format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
+
+logger = logging.getLogger(__name__)
+
+http_client = HttpClient(error_handler=ErrorHandler(logger=logger))
+
+PDFS_DIRECTORY = os.path.join(os.getcwd(), 'tests', 'data', 'pdfs')
+
+
+@pytest.fixture(scope="session", autouse=True)
+def on_exit():
+    print("Setting up resources...")
+    yield
+    print("Tearing down resources...")
+    if os.path.exists(PDFS_DIRECTORY):
+        pdfs_found = os.listdir(PDFS_DIRECTORY)
+        if len(pdfs_found) > 10:
+            raise RuntimeError("PDF directory path is likely corrupted. More than 10 files found. Aborting teardown...")
+        for file in os.listdir(PDFS_DIRECTORY):
+            os.remove(os.path.join(PDFS_DIRECTORY, file))
+        os.removedirs(PDFS_DIRECTORY)
 
 
 def test_filter_cnpjs_no_filter():
     worksheet_path = os.path.join(os.getcwd(), 'tests', 'data', 'demonstracoes.xlsx')
     statements_sheet_name = 'demonstracoes'
-    saved_df = filter_cnpjs(worksheet_path, statements_sheet_name)
+    saved_df = pdfs.filter_cnpjs(worksheet_path, statements_sheet_name)
     expected_df = factory.statements_df()
 
     assert saved_df.equals(expected_df)
@@ -19,7 +49,7 @@ def test_filter_cnpjs_no_filter():
 def test_filter_cnpjs():
     worksheet_path = os.path.join(os.getcwd(), 'tests', 'data', 'demonstracoes_filtered.xlsx')
     statements_sheet_name = 'demonstracoes'
-    saved_df = filter_cnpjs(worksheet_path, statements_sheet_name)
+    saved_df = pdfs.filter_cnpjs(worksheet_path, statements_sheet_name)
 
     expected_df = pd.DataFrame({
         'nomeParticipante': ['ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.',
@@ -43,7 +73,7 @@ def test_filter_cnpjs():
 def test_filter_types():
     statements = factory.statements_df()
 
-    assert statements.equals(filter_types(statements, ''))
+    assert statements.equals(pdfs.filter_types(statements, ''))
 
     expected_df = pd.DataFrame({
         'nomeParticipante': ['ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.'],
@@ -57,7 +87,7 @@ def test_filter_types():
     })
     expected_df['cnpj'] = expected_df['cnpj'].astype('string')
 
-    filtered_df = filter_types(statements, 'Balanço Patrimonial (BP)').reset_index().drop('index', axis=1)
+    filtered_df = pdfs.filter_types(statements, 'Balanço Patrimonial (BP)').reset_index().drop('index', axis=1)
 
     assert expected_df.equals(filtered_df)
 
@@ -65,7 +95,7 @@ def test_filter_types():
 def test_filter_dates():
     statements = factory.statements_df()
 
-    assert statements.equals(filter_dates(statements, ''))
+    assert statements.equals(pdfs.filter_dates(statements, ''))
 
     expected_df = pd.DataFrame({
         'nomeParticipante': ['ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.',
@@ -86,7 +116,7 @@ def test_filter_dates():
     })
     expected_df['cnpj'] = expected_df['cnpj'].astype('string').reset_index(drop=True)
 
-    assert expected_df.equals(filter_dates(statements, 'latest').reset_index(drop=True))
+    assert expected_df.equals(pdfs.filter_dates(statements, 'latest').reset_index(drop=True))
 
 
 def test_filter_statements():
@@ -95,4 +125,28 @@ def test_filter_statements():
 
     statements = factory.statements_df()
 
-    assert statements.equals(filter_statements(worksheet_path, statements_sheet_name))
+    assert statements.equals(pdfs.filter_statements(worksheet_path, statements_sheet_name))
+
+
+class TestPDFEndpoint(TestCase):
+
+    @patch('central_balancos_py.src.pdfs.fetch_pdf')
+    def test_fetch_pdfs(self, mock_fetch_pdf):
+        statements = pd.DataFrame({
+            'nomeParticipante': ['ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.'],
+            'tipoDemonstracao': ['Balanço Patrimonial (BP)'],
+            'dataPublicacao': ['2023-06-21T11:24:32.34'],
+            'cnpj': ['13385440000156'],
+            'status': ['Publicado'],
+            'dataFim': ['2022-12-31T00:00:00'],
+            'pdf': [
+                'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820']
+        })
+        statements['cnpj'] = statements['cnpj'].astype('string')
+
+        sample_pdf_path = os.path.join(os.getcwd(), 'tests', 'data', 'sample.pdf')
+        with open(sample_pdf_path, 'rb') as file:
+            mock_pdf_data = file.read()
+        mock_fetch_pdf.return_value = mock_pdf_data
+        pdfs.fetch_pdfs(statements, PDFS_DIRECTORY)
+        assert len(os.listdir(PDFS_DIRECTORY)) == 1

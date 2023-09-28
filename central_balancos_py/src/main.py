@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.INFO,
 
 logger = logging.getLogger(__name__)
 
+
 def prompt_statement_type():
     user_input = input(f'Would you like to filter by one of these statement types?\n'
                        f'\t1     - Balanço Patrimonial (BP)\n'
@@ -75,9 +76,9 @@ def handle_extraction(env):
     selected_cnpj = selected_cnpj if selected_cnpj != '' else None
     if selected_cnpj is None or re.match('^\d+$', selected_cnpj):
         logger.info('Extracting company info...\nThe worksheet will be available at '
-                     f"{env['worksheet_path']}.")
+                    f"{env['worksheet_path']}.")
         extract_company_info(
-            worksheet_path=['worksheet_path'],
+            worksheet_path=env['worksheet_path'],
             statements_sheet_name=env['statements_sheet_name'],
             selected_cnpj=selected_cnpj
         )
@@ -103,10 +104,13 @@ def handle_download(env):
         statement_type = prompt_statement_type()
         publish_date = prompt_publish_date()
         logger.info('Downloading PDFs...\n'
-                     f"The files will be available at {env['pdfs_directory']} "
-                     f'and will follow the naming convention <company_name>_<statement_type>_<publish_date>')
-        download_pdfs(env['pdfs_directory'], env['worksheet_path'], env['statements_sheet_name'],
-                      statement_type, publish_date)
+                    f"The files will be available at {env['pdfs_directory']} "
+                    f'and will follow the naming convention <company_name>_<statement_type>_<publish_date>')
+        download_pdfs(pdfs_directory=env['pdfs_directory'],
+                      worksheet_path=env['worksheet_path'],
+                      statements_sheet_name=env['statements_sheet_name'],
+                      statement_type=statement_type,
+                      publish_date=publish_date)
     else:
         raise KeyError(f'please re-execute the application and select option 1 in the initial menu '
                        f'to generate the financial statement info worksheet and verify that it is saved at '
