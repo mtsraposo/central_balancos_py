@@ -30,7 +30,7 @@ def filter_cnpjs(worksheet_path, statements_sheet_name):
     statements['cnpj'] = statements['cnpj'].astype('string')
     if 'cnpjs' in pd.ExcelFile(worksheet_path).sheet_names:
         cnpjs = pd.read_excel(worksheet_path, sheet_name='cnpjs')['cnpj'].values.tolist()
-        cnpjs = [re.sub('\D', '', str(cnpj)) for cnpj in cnpjs]
+        cnpjs = [re.sub(r'\D', '', str(cnpj)) for cnpj in cnpjs]
         return statements[statements['cnpj'].isin(cnpjs)]
     return statements
 
@@ -43,9 +43,8 @@ def filter_types(statements, statement_type):
 
 def filter_dates(statements, publish_date):
     if publish_date != '':
-        statements = statements.sort_values(by=['nomeParticipante', 'tipoDemonstracao', 'dataPublicacao'],
-                                            ascending=(publish_date == 'latest'))
-        return statements.groupby(by=['nomeParticipante', 'tipoDemonstracao']).tail(1)
+        statements = statements.sort_values(by=['nomeParticipante', 'tipoDemonstracao', 'dataPublicacao'])
+        statements = statements.sort_values(by=['dataPublicacao'], ascending=(publish_date == 'latest'))
     return statements
 
 
