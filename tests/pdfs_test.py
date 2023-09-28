@@ -4,7 +4,7 @@ import pandas as pd
 
 from tests.support import factory
 
-from central_balancos_py.src.pdfs import filter_cnpjs, filter_types, filter_dates
+from central_balancos_py.src.pdfs import filter_cnpjs, filter_types, filter_dates, filter_statements
 
 
 def test_filter_cnpjs_no_filter():
@@ -87,3 +87,12 @@ def test_filter_dates():
     expected_df['cnpj'] = expected_df['cnpj'].astype('string').reset_index(drop=True)
 
     assert expected_df.equals(filter_dates(statements, 'latest').reset_index(drop=True))
+
+
+def test_filter_statements():
+    worksheet_path = os.path.join(os.getcwd(), 'tests', 'data', 'demonstracoes.xlsx')
+    statements_sheet_name = 'demonstracoes'
+
+    statements = factory.statements_df()
+
+    assert statements.equals(filter_statements(worksheet_path, statements_sheet_name))

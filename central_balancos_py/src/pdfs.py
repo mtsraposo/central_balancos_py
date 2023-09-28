@@ -48,7 +48,7 @@ def filter_dates(statements, publish_date):
     return statements
 
 
-def filter_statements(worksheet_path, statements_sheet_name, statement_type, publish_date):
+def filter_statements(worksheet_path, statements_sheet_name, statement_type='', publish_date=''):
     statements = filter_cnpjs(worksheet_path, statements_sheet_name)
     statements = filter_types(statements, statement_type)
     statements = filter_dates(statements, publish_date)
