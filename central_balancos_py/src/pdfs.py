@@ -81,6 +81,6 @@ def fetch_pdfs(statements, pdfs_directory):
             f.write(pdf)
 
 
-def download_pdfs(pdfs_directory, worksheet_path, statements_sheet_name, statement_type, publish_date):
+def download_pdfs(pdfs_directory, worksheet_path, statements_sheet_name, statement_type='', publish_date=''):
     statements = filter_statements(worksheet_path, statements_sheet_name, statement_type, publish_date)
     fetch_pdfs(statements, pdfs_directory)

@@ -23,11 +23,7 @@ http_client = HttpClient(error_handler=ErrorHandler(logger=logger))
 PDFS_DIRECTORY = os.path.join(os.getcwd(), 'tests', 'data', 'pdfs')
 
 
-@pytest.fixture(scope="session", autouse=True)
-def on_exit():
-    print("Setting up resources...")
-    yield
-    print("Tearing down resources...")
+def clean_up_pdf_directory():
     if os.path.exists(PDFS_DIRECTORY):
         pdfs_found = os.listdir(PDFS_DIRECTORY)
         if len(pdfs_found) > 10:
@@ -35,6 +31,14 @@ def on_exit():
         for file in os.listdir(PDFS_DIRECTORY):
             os.remove(os.path.join(PDFS_DIRECTORY, file))
         os.removedirs(PDFS_DIRECTORY)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def on_exit():
+    print("Setting up resources...")
+    yield
+    print("Tearing down resources...")
+    clean_up_pdf_directory()
 
 
 def test_filter_cnpjs_no_filter():
@@ -150,3 +154,17 @@ class TestPDFEndpoint(TestCase):
         mock_fetch_pdf.return_value = mock_pdf_data
         pdfs.fetch_pdfs(statements, PDFS_DIRECTORY)
         assert len(os.listdir(PDFS_DIRECTORY)) == 1
+        clean_up_pdf_directory()
+
+    @patch('central_balancos_py.src.pdfs.fetch_pdf')
+    def test_download_pdfs(self, mock_fetch_pdf):
+        sample_pdf_path = os.path.join(os.getcwd(), 'tests', 'data', 'sample.pdf')
+        worksheet_path = os.path.join(os.getcwd(), 'tests', 'data', 'demonstracoes_filtered.xlsx')
+        statements_sheet_name = 'demonstracoes'
+        statement_type = 'Balanço Patrimonial (BP)'
+        with open(sample_pdf_path, 'rb') as file:
+            mock_pdf_data = file.read()
+        mock_fetch_pdf.return_value = mock_pdf_data
+        pdfs.download_pdfs(PDFS_DIRECTORY, worksheet_path, statements_sheet_name, statement_type)
+        assert len(os.listdir(PDFS_DIRECTORY)) == 1
+        clean_up_pdf_directory()
