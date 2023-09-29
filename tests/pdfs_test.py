@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+import requests
 
 import central_balancos_py.src.pdfs as pdfs
 from central_balancos_py.src.client.error_handler import ErrorHandler
@@ -34,9 +35,9 @@ def clean_up_pdf_directory():
 
 @pytest.fixture(scope="session", autouse=True)
 def on_exit():
-    print("Setting up resources...")
+    logger.info("Setting up resources...")
     yield
-    print("Tearing down resources...")
+    logger.info("Tearing down resources...")
     clean_up_pdf_directory()
 
 
@@ -165,6 +166,14 @@ def test_filter_statements():
 
     assert statements.equals(pdfs.filter_statements(worksheet_path, statements_sheet_name))
 
+class MockResponse(requests.Response):
+    def __init__(self, status_code):
+        super().__init__()
+        self.status_code = status_code
+
+
+def mocked_requests_get(status_code):
+    return MockResponse(status_code)
 
 class TestPDFEndpoint(TestCase):
 
@@ -183,6 +192,14 @@ class TestPDFEndpoint(TestCase):
         content = pdfs.fetch_pdf(url)
 
         self.assertEqual(content, mock_pdf_data)
+
+    @patch('central_balancos_py.src.pdfs.requests.get')
+    def test_fetch_pdf_error(self, mock_get):
+        url = 'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820'
+        mock_get.return_value = mocked_requests_get(400)
+
+        with self.assertRaises(requests.HTTPError):
+            pdfs.fetch_pdf(url)
 
     @patch('central_balancos_py.src.pdfs.requests.get')
     def test_fetch_pdfs(self, mock_get):

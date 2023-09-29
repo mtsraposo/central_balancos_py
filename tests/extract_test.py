@@ -23,9 +23,9 @@ WORKSHEET_PATH = os.path.join(os.getcwd(), 'demonstracoes.xlsx')
 
 @pytest.fixture(scope="session", autouse=True)
 def on_exit():
-    print("Setting up resources...")
+    logger.info("Setting up resources...")
     yield
-    print("Tearing down resources...")
+    logger.info("Tearing down resources...")
     if os.path.exists(WORKSHEET_PATH):
         os.remove(WORKSHEET_PATH)
 
