@@ -1,16 +1,15 @@
 import logging
 import os
+import unittest
+from unittest import TestCase
 from unittest.mock import patch
 
-from unittest import TestCase
-
+import pandas as pd
 import pytest
 
-import pandas as pd
-
+import central_balancos_py.src.pdfs as pdfs
 from central_balancos_py.src.client.error_handler import ErrorHandler
 from central_balancos_py.src.client.http import HttpClient
-import central_balancos_py.src.pdfs as pdfs
 from tests.support import factory
 
 logging.basicConfig(level=logging.INFO,
@@ -168,6 +167,22 @@ def test_filter_statements():
 
 
 class TestPDFEndpoint(TestCase):
+
+    @patch('central_balancos_py.src.pdfs.requests.get')
+    def test_fetch_pdf_success(self, mock_get):
+        url = 'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820'
+        sample_pdf_path = os.path.join(os.getcwd(), 'tests', 'data', 'sample.pdf')
+
+        with open(sample_pdf_path, 'rb') as file:
+            mock_pdf_data = file.read()
+        mock_response = unittest.mock.Mock()
+        mock_response.content = mock_pdf_data
+        mock_response.status_code = 200
+
+        mock_get.return_value = mock_response
+        content = pdfs.fetch_pdf(url)
+
+        self.assertEqual(content, mock_pdf_data)
 
     @patch('central_balancos_py.src.pdfs.fetch_pdf')
     def test_fetch_pdfs(self, mock_fetch_pdf):
