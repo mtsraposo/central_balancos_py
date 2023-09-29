@@ -178,14 +178,14 @@ class TestPDFEndpoint(TestCase):
         mock_response = unittest.mock.Mock()
         mock_response.content = mock_pdf_data
         mock_response.status_code = 200
-
         mock_get.return_value = mock_response
+
         content = pdfs.fetch_pdf(url)
 
         self.assertEqual(content, mock_pdf_data)
 
-    @patch('central_balancos_py.src.pdfs.fetch_pdf')
-    def test_fetch_pdfs(self, mock_fetch_pdf):
+    @patch('central_balancos_py.src.pdfs.requests.get')
+    def test_fetch_pdfs(self, mock_get):
         statements = pd.DataFrame({
             'nomeParticipante': ['ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.'],
             'tipoDemonstracao': ['Balanço Patrimonial (BP)'],
@@ -201,20 +201,29 @@ class TestPDFEndpoint(TestCase):
         sample_pdf_path = os.path.join(os.getcwd(), 'tests', 'data', 'sample.pdf')
         with open(sample_pdf_path, 'rb') as file:
             mock_pdf_data = file.read()
-        mock_fetch_pdf.return_value = mock_pdf_data
+        mock_response = unittest.mock.Mock()
+        mock_response.content = mock_pdf_data
+        mock_response.status_code = 200
+        mock_get.return_value = mock_response
+
         pdfs.fetch_pdfs(statements, PDFS_DIRECTORY)
         assert len(os.listdir(PDFS_DIRECTORY)) == 1
         clean_up_pdf_directory()
 
-    @patch('central_balancos_py.src.pdfs.fetch_pdf')
-    def test_download_pdfs(self, mock_fetch_pdf):
+    @patch('central_balancos_py.src.pdfs.requests.get')
+    def test_download_pdfs(self, mock_get):
         sample_pdf_path = os.path.join(os.getcwd(), 'tests', 'data', 'sample.pdf')
         worksheet_path = os.path.join(os.getcwd(), 'tests', 'data', 'demonstracoes_filtered.xlsx')
         statements_sheet_name = 'demonstracoes'
         statement_type = 'Balanço Patrimonial (BP)'
+
         with open(sample_pdf_path, 'rb') as file:
             mock_pdf_data = file.read()
-        mock_fetch_pdf.return_value = mock_pdf_data
+        mock_response = unittest.mock.Mock()
+        mock_response.content = mock_pdf_data
+        mock_response.status_code = 200
+        mock_get.return_value = mock_response
+
         pdfs.download_pdfs(PDFS_DIRECTORY, worksheet_path, statements_sheet_name, statement_type)
         assert len(os.listdir(PDFS_DIRECTORY)) == 1
         clean_up_pdf_directory()
