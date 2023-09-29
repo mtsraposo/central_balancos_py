@@ -41,6 +41,41 @@ def on_exit():
     clean_up_pdf_directory()
 
 
+def test_replace_with_underscore():
+    test_cases = {'a': 'a', 'b': 'b', 'a@b': 'a_b', 'a-b': 'a_b', 'a+b': 'a_b', 'a.b': 'a_b'}
+    for to_replace, expected in test_cases.items():
+        assert expected == pdfs.replace_with_underscore(to_replace)
+
+
+def test_parse_type():
+    statements = {'Demonstrações Contábeis Completas (DCC)': 'DCC',
+                  'Balanço Patrimonial (BP)': 'BP'}
+
+    for statement, expected in statements.items():
+        assert expected == pdfs.parse_type(statement)[1]
+
+
+def test_parse_date():
+    dates = {'2019-11-20T22:55:55.627': '2019_11_20', '2023-06-21T11:24:32.34': '2023_06_21'}
+
+    for date, expected in dates.items():
+        assert expected == pdfs.parse_date(date)
+
+
+def test_build_file_name():
+    row = pd.Series({
+        'nomeParticipante': 'ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.',
+        'tipoDemonstracao': 'Balanço Patrimonial (BP)',
+        'dataPublicacao': '2023-06-21T11:24:32.34',
+        'cnpj': '13385440000156',
+        'status': 'Publicado',
+        'dataFim': '2022-12-31T00:00:00',
+        'pdf': 'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820'
+    })
+
+    assert 'ITATIAIA_INVESTIMENTOS_IMOBILIARIOS_E_PARTICIPACOES_S_A__BP_2023_06_21.pdf' == pdfs.build_file_name(row)
+
+
 def test_filter_cnpjs_no_filter():
     worksheet_path = os.path.join(os.getcwd(), 'tests', 'data', 'demonstracoes.xlsx')
     statements_sheet_name = 'demonstracoes'
