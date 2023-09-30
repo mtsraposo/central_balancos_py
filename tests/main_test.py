@@ -112,19 +112,24 @@ def test_config(mock_argv, mock_cwd, argv, working_directory, expected_result):
 @pytest.mark.parametrize(
     "user_input, expected_result",
     [
-        ('12345670000189', ('12345670000189', True)),
-        ('', (None, True)),
-        ('abc', ('abc', False)),
+        ('12345670000189', '12345670000189'),
+        ('', None),
+        ('abc', ValueError),
     ]
 )
 @patch("central_balancos_py.src.main.input")
 def test_prompt_cnpj(mock_input, user_input, expected_result):
     mock_input.return_value = user_input
-    assert expected_result == main.prompt_cnpj()
+    if expected_result == ValueError:
+        with pytest.raises(ValueError):
+            main.prompt_cnpj()
+    else:
+        main.prompt_cnpj()
+        assert expected_result == main.prompt_cnpj()
 
 
 @pytest.mark.parametrize(
-    "user_input, env, expected_result",
+    "user_input, env, exists",
     [
         ('Y', {'worksheet_path': READ_ONLY_WORKSHEET_PATH}, True),
         ('Y', {'worksheet_path': ''}, False),
@@ -137,9 +142,13 @@ def test_prompt_cnpj(mock_input, user_input, expected_result):
     ]
 )
 @patch("central_balancos_py.src.main.input")
-def test_statement_file_exists(mock_input, user_input, env, expected_result):
+def test_ensure_statement_file_exists(mock_input, user_input, env, exists):
     mock_input.return_value = user_input
-    assert expected_result == main.statement_file_exists(env)
+    if not exists:
+        with pytest.raises(KeyError):
+            main.ensure_statement_file_exists(env)
+    else:
+        assert main.ensure_statement_file_exists(env) is None
 
 
 @pytest.mark.parametrize(

@@ -75,7 +75,10 @@ def prompt_cnpj():
     )
     selected_cnpj = selected_cnpj if selected_cnpj != '' else None
     valid = selected_cnpj is None or re.match(r'^\d+$', selected_cnpj) is not None
-    return selected_cnpj, valid
+    if valid:
+        return selected_cnpj
+    else:
+        raise ValueError(f'please input a valid number. "{selected_cnpj}" provided')
 
 
 def maybe_download_pdfs(env):
@@ -86,27 +89,27 @@ def maybe_download_pdfs(env):
 
 
 def handle_extraction(env):
-    selected_cnpj, valid_cnpj = prompt_cnpj()
-    if valid_cnpj:
-        logger.info('Extracting company info...\nThe worksheet will be available at '
-                    f"{env['worksheet_path']}.")
-        extract_company_info(
-            worksheet_path=env['worksheet_path'],
-            statements_sheet_name=env['statements_sheet_name'],
-            selected_cnpj=selected_cnpj
-        )
-        maybe_download_pdfs(env)
-    else:
-        raise ValueError(f'please input a valid number. "{selected_cnpj}" provided')
+    selected_cnpj = prompt_cnpj()
+    logger.info('Extracting company info...\nThe worksheet will be available at '
+                f"{env['worksheet_path']}.")
+    extract_company_info(
+        worksheet_path=env['worksheet_path'],
+        statements_sheet_name=env['statements_sheet_name'],
+        selected_cnpj=selected_cnpj
+    )
+    maybe_download_pdfs(env)
 
 
-def statement_file_exists(env):
+def ensure_statement_file_exists(env):
     exists = input(
         f"Do you have a worksheet containing statement info "
         f"(generated in option 1 of the previous menu) "
         f"saved in your computer and located at {env['worksheet_path']}? [Y/n] \n")
 
-    return exists in ['', 'y', 'Y'] and os.path.exists(env['worksheet_path'])
+    if exists not in ['', 'y', 'Y'] or not os.path.exists(env['worksheet_path']):
+        raise KeyError(f'please re-execute the application and select option 1 in the initial menu '
+                       f'to generate the financial statement info worksheet and verify that it is saved at '
+                       f"{env['worksheet_path']} before proceeding.")
 
 
 def prompt_download_instructions():
@@ -118,22 +121,18 @@ def prompt_download_instructions():
 
 
 def handle_download(env):
-    if statement_file_exists(env):
-        prompt_download_instructions()
-        statement_type = prompt_statement_type()
-        publish_date = prompt_publish_date()
-        logger.info('Downloading PDFs...\n'
-                    f"The files will be available at {env['pdfs_directory']} "
-                    f'and will follow the naming convention <company_name>_<statement_type>_<publish_date>')
-        download_pdfs(pdfs_directory=env['pdfs_directory'],
-                      worksheet_path=env['worksheet_path'],
-                      statements_sheet_name=env['statements_sheet_name'],
-                      statement_type=statement_type,
-                      publish_date=publish_date)
-    else:
-        raise KeyError(f'please re-execute the application and select option 1 in the initial menu '
-                       f'to generate the financial statement info worksheet and verify that it is saved at '
-                       f"{env['worksheet_path']} before proceeding.")
+    ensure_statement_file_exists(env)
+    prompt_download_instructions()
+    statement_type = prompt_statement_type()
+    publish_date = prompt_publish_date()
+    logger.info('Downloading PDFs...\n'
+                f"The files will be available at {env['pdfs_directory']} "
+                f'and will follow the naming convention <company_name>_<statement_type>_<publish_date>')
+    download_pdfs(pdfs_directory=env['pdfs_directory'],
+                  worksheet_path=env['worksheet_path'],
+                  statements_sheet_name=env['statements_sheet_name'],
+                  statement_type=statement_type,
+                  publish_date=publish_date)
 
 
 def run():
