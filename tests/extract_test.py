@@ -7,6 +7,7 @@ import pytest
 import requests
 
 import tests.support.factory as factory
+from tests.constants import TEMP_WORKSHEET_PATH
 from central_balancos_py.src.client.error_handler import ErrorHandler
 from central_balancos_py.src.client.http import HttpClient
 from central_balancos_py.src.extract import url_company, url_list, extract_row, try_parse_statement, maybe_retry_parse, \
@@ -19,15 +20,14 @@ logger = logging.getLogger(__name__)
 
 http_client = HttpClient(error_handler=ErrorHandler(logger=logger))
 
-WORKSHEET_PATH = os.path.join(os.getcwd(), 'demonstracoes.xlsx')
 
 @pytest.fixture(scope="session", autouse=True)
 def on_exit():
     logger.info("Setting up resources...")
     yield
     logger.info("Tearing down resources...")
-    if os.path.exists(WORKSHEET_PATH):
-        os.remove(WORKSHEET_PATH)
+    if os.path.exists(TEMP_WORKSHEET_PATH):
+        os.remove(TEMP_WORKSHEET_PATH)
 
 
 class MockResponse(requests.Response):
@@ -234,16 +234,16 @@ def test_to_excel():
     df = to_df(rows)
     sheet_name = 'demonstracoes'
 
-    to_excel(df, WORKSHEET_PATH, sheet_name)
+    to_excel(df, TEMP_WORKSHEET_PATH, sheet_name)
 
-    saved = pd.read_excel(WORKSHEET_PATH, sheet_name=sheet_name)
+    saved = pd.read_excel(TEMP_WORKSHEET_PATH, sheet_name=sheet_name)
     saved['cnpj'] = saved['cnpj'].astype('string')
     expected = df.reset_index()
     expected['cnpj'] = saved['cnpj'].astype('string')
 
     assert saved.equals(expected)
 
-    os.remove(WORKSHEET_PATH)
+    os.remove(TEMP_WORKSHEET_PATH)
 
 
 def test_extract_company_info():
@@ -264,28 +264,17 @@ def test_extract_company_info():
             return mocked_requests_get(companies_json_data, status_code)
         return mocked_requests_get(statements_json_data, status_code)
 
-    expected = pd.DataFrame({
-        'nomeParticipante': ['ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.'],
-        'tipoDemonstracao': ['Demonstrações Contábeis Completas (DCC)'],
-        'dataPublicacao': ['2023-06-21T11:24:32.34'],
-        'cnpj': ['13385440000156'],
-        'status': ['Publicado'],
-        'dataFim': ['2022-12-31T00:00:00'],
-        'pdf': [
-            'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820'
-        ]
-    })
-    expected['cnpj'] = expected['cnpj'].astype('string')
+    expected = factory.statement_df()
 
     with patch('central_balancos_py.src.extract.requests.get') as mock_get:
         mock_get.side_effect = multi_mock_requests_get
 
         sheet_name = 'demonstracoes'
-        extract_company_info(WORKSHEET_PATH, sheet_name)
+        extract_company_info(TEMP_WORKSHEET_PATH, sheet_name)
 
-        saved = pd.read_excel(WORKSHEET_PATH, sheet_name=sheet_name)
+        saved = pd.read_excel(TEMP_WORKSHEET_PATH, sheet_name=sheet_name)
         saved['cnpj'] = saved['cnpj'].astype('string')
 
         assert saved.equals(expected)
 
-    os.remove(WORKSHEET_PATH)
+    os.remove(TEMP_WORKSHEET_PATH)

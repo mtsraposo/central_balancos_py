@@ -30,6 +30,20 @@ def row(name=None, cnpj=None):
         'pdf': 'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820'
     }
 
+def statement_df():
+    expected = pd.DataFrame({
+        'nomeParticipante': ['ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.'],
+        'tipoDemonstracao': ['Demonstrações Contábeis Completas (DCC)'],
+        'dataPublicacao': ['2023-06-21T11:24:32.34'],
+        'cnpj': ['13385440000156'],
+        'status': ['Publicado'],
+        'dataFim': ['2022-12-31T00:00:00'],
+        'pdf': [
+            'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820'
+        ]
+    })
+    expected['cnpj'] = expected['cnpj'].astype('string')
+    return expected
 
 def statements_df():
     expected_df = pd.DataFrame({

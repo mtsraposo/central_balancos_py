@@ -1,11 +1,30 @@
+import logging
 import os
 from unittest.mock import patch, Mock
 
+import pandas as pd
 import pytest
 
 from central_balancos_py.src import main
-from tests.constants import PDFS_DIRECTORY, PROJECT_ROOT_PATH, SAMPLE_PDF_PATH, WORKSHEET_PATH
+from tests.constants import PDFS_DIRECTORY, PROJECT_ROOT_PATH, SAMPLE_PDF_PATH, READ_ONLY_WORKSHEET_PATH, \
+    TEMP_WORKSHEET_PATH
+from tests.support import factory
 from tests.util import clean_up_pdf_directory
+
+logging.basicConfig(level=logging.INFO,
+                    format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
+
+logger = logging.getLogger(__name__)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def on_exit():
+    logger.info("Setting up resources...")
+    yield
+    logger.info("Tearing down resources...")
+    if os.path.exists(TEMP_WORKSHEET_PATH):
+        os.remove(TEMP_WORKSHEET_PATH)
+    clean_up_pdf_directory()
 
 
 @pytest.mark.parametrize(
@@ -107,13 +126,13 @@ def test_prompt_cnpj(mock_input, user_input, expected_result):
 @pytest.mark.parametrize(
     "user_input, env, expected_result",
     [
-        ('Y', {'worksheet_path': WORKSHEET_PATH}, True),
+        ('Y', {'worksheet_path': READ_ONLY_WORKSHEET_PATH}, True),
         ('Y', {'worksheet_path': ''}, False),
-        ('y', {'worksheet_path': WORKSHEET_PATH}, True),
+        ('y', {'worksheet_path': READ_ONLY_WORKSHEET_PATH}, True),
         ('y', {'worksheet_path': ''}, False),
-        ('', {'worksheet_path': WORKSHEET_PATH}, True),
+        ('', {'worksheet_path': READ_ONLY_WORKSHEET_PATH}, True),
         ('', {'worksheet_path': ''}, False),
-        ('n', {'worksheet_path': WORKSHEET_PATH}, False),
+        ('n', {'worksheet_path': READ_ONLY_WORKSHEET_PATH}, False),
         ('n', {'worksheet_path': ''}, False),
     ]
 )
@@ -140,7 +159,7 @@ def test_prompt_download_instructions(mock_input, user_input, expected_result):
 @patch('central_balancos_py.src.pdfs.requests.get')
 def test_handle_download(mock_get, mock_input):
     mock_input.return_value = ''
-    env = {'worksheet_path': WORKSHEET_PATH,
+    env = {'worksheet_path': READ_ONLY_WORKSHEET_PATH,
            'statements_sheet_name': 'demonstracoes',
            'pdfs_directory': PDFS_DIRECTORY}
 
@@ -169,7 +188,7 @@ def test_handle_download(mock_get, mock_input):
 @patch('central_balancos_py.src.pdfs.requests.get')
 def test_handle_download(mock_get, mock_input, user_input, should_download):
     mock_input.return_value = user_input
-    env = {'worksheet_path': WORKSHEET_PATH,
+    env = {'worksheet_path': READ_ONLY_WORKSHEET_PATH,
            'statements_sheet_name': 'demonstracoes',
            'pdfs_directory': PDFS_DIRECTORY}
 
@@ -186,3 +205,56 @@ def test_handle_download(mock_get, mock_input, user_input, should_download):
         clean_up_pdf_directory()
     else:
         assert not os.path.exists(PDFS_DIRECTORY)
+
+
+def mock_requests_get(url, *_args, **_kwargs):
+    companies_json_data = {
+        'items': [
+            {'id': 635, 'cnpj': '13385440000156', 'nome': 'ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.'}
+        ],
+        'totalCount': 1
+    }
+    statements_json_data = {
+        'items': [factory.statement()],
+        'totalCount': 1
+    }
+
+    mock_response = Mock(status_code=200)
+    if 'Participante' in url:
+        mock_response.json.return_value = companies_json_data
+    elif 'pdf' in url:
+        with open(SAMPLE_PDF_PATH, 'rb') as file:
+            mock_pdf_data = file.read()
+        mock_response.content = mock_pdf_data
+        mock_response.return_value = mock_response
+    elif 'Demonstracao' in url:
+        mock_response.json.return_value = statements_json_data
+    else:
+        mock_response.status_code = 404
+
+    return mock_response
+
+
+@patch('central_balancos_py.src.client.http.requests.get')
+@patch("central_balancos_py.src.main.input")
+def test_handle_extraction(mock_input, mock_get):
+    mock_input.return_value = ''
+
+    sheet_name = 'demonstracoes'
+    env = {'worksheet_path': TEMP_WORKSHEET_PATH,
+           'statements_sheet_name': sheet_name,
+           'pdfs_directory': PDFS_DIRECTORY}
+
+    mock_get.side_effect = mock_requests_get
+
+    main.handle_extraction(env)
+
+    saved = pd.read_excel(TEMP_WORKSHEET_PATH, sheet_name=sheet_name)
+    saved['cnpj'] = saved['cnpj'].astype('string')
+    expected = factory.statement_df()
+
+    assert saved.equals(expected)
+    assert len(os.listdir(PDFS_DIRECTORY)) == 1
+
+    os.remove(TEMP_WORKSHEET_PATH)
+    clean_up_pdf_directory()

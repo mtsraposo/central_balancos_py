@@ -94,7 +94,7 @@ def handle_extraction(env):
             statements_sheet_name=env['statements_sheet_name'],
             selected_cnpj=selected_cnpj
         )
-        maybe_download_pdfs()
+        maybe_download_pdfs(env)
     else:
         raise ValueError(f'please input a valid number. "{selected_cnpj}" provided')
 

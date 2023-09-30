@@ -11,7 +11,7 @@ import requests
 import central_balancos_py.src.pdfs as pdfs
 from central_balancos_py.src.client.error_handler import ErrorHandler
 from central_balancos_py.src.client.http import HttpClient
-from tests.constants import FILTERED_WORKSHEET_PATH, PDFS_DIRECTORY, SAMPLE_PDF_PATH
+from tests.constants import READ_ONLY_FILTERED_WORKSHEET_PATH, PDFS_DIRECTORY, SAMPLE_PDF_PATH, READ_ONLY_WORKSHEET_PATH
 from tests.support import factory
 from tests.util import clean_up_pdf_directory
 
@@ -67,18 +67,16 @@ def test_build_file_name():
 
 
 def test_filter_cnpjs_no_filter():
-    worksheet_path = os.path.join(os.getcwd(), 'tests', 'data', 'demonstracoes.xlsx')
     statements_sheet_name = 'demonstracoes'
-    saved_df = pdfs.filter_cnpjs(worksheet_path, statements_sheet_name)
+    saved_df = pdfs.filter_cnpjs(READ_ONLY_WORKSHEET_PATH, statements_sheet_name)
     expected_df = factory.statements_df()
 
     assert saved_df.equals(expected_df)
 
 
 def test_filter_cnpjs():
-    worksheet_path = os.path.join(os.getcwd(), 'tests', 'data', 'demonstracoes_filtered.xlsx')
     statements_sheet_name = 'demonstracoes'
-    saved_df = pdfs.filter_cnpjs(worksheet_path, statements_sheet_name)
+    saved_df = pdfs.filter_cnpjs(READ_ONLY_FILTERED_WORKSHEET_PATH, statements_sheet_name)
 
     expected_df = pd.DataFrame({
         'nomeParticipante': ['ITATIAIA INVESTIMENTOS IMOBILIARIOS E PARTICIPACOES S.A.',
@@ -149,12 +147,11 @@ def test_filter_dates():
 
 
 def test_filter_statements():
-    worksheet_path = os.path.join(os.getcwd(), 'tests', 'data', 'demonstracoes.xlsx')
     statements_sheet_name = 'demonstracoes'
 
     statements = factory.statements_df()
 
-    assert statements.equals(pdfs.filter_statements(worksheet_path, statements_sheet_name))
+    assert statements.equals(pdfs.filter_statements(READ_ONLY_WORKSHEET_PATH, statements_sheet_name))
 
 
 class MockResponse(requests.Response):
@@ -228,6 +225,6 @@ class TestPDFEndpoint(TestCase):
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
-        pdfs.download_pdfs(PDFS_DIRECTORY, FILTERED_WORKSHEET_PATH, statements_sheet_name, statement_type)
+        pdfs.download_pdfs(PDFS_DIRECTORY, READ_ONLY_FILTERED_WORKSHEET_PATH, statements_sheet_name, statement_type)
         assert len(os.listdir(PDFS_DIRECTORY)) == 1
         clean_up_pdf_directory()
