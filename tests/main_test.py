@@ -1,3 +1,4 @@
+import os
 from unittest.mock import patch
 
 import pytest
@@ -5,6 +6,7 @@ import pytest
 from central_balancos_py.src import main
 
 PROJECT_ROOT_PATH = '/Users/example/Downloads/central_balancos_py'
+WORKSHEET_PATH = os.path.join(os.getcwd(), 'tests', 'data', 'demonstracoes.xlsx')
 
 
 @pytest.mark.parametrize(
@@ -87,3 +89,36 @@ def test_config(mock_argv, mock_cwd, argv, working_directory, expected_result):
     mock_cwd.return_value = working_directory
 
     assert expected_result == main.config()
+
+
+@pytest.mark.parametrize(
+    "user_input, expected_result",
+    [
+        ('12345670000189', ('12345670000189', True)),
+        ('', (None, True)),
+        ('abc', ('abc', False)),
+    ]
+)
+@patch("central_balancos_py.src.main.input")
+def test_prompt_cnpj(mock_input, user_input, expected_result):
+    mock_input.return_value = user_input
+    assert expected_result == main.prompt_cnpj()
+
+
+@pytest.mark.parametrize(
+    "user_input, env, expected_result",
+    [
+        ('Y', {'worksheet_path': WORKSHEET_PATH}, True),
+        ('Y', {'worksheet_path': ''}, False),
+        ('y', {'worksheet_path': WORKSHEET_PATH}, True),
+        ('y', {'worksheet_path': ''}, False),
+        ('', {'worksheet_path': WORKSHEET_PATH}, True),
+        ('', {'worksheet_path': ''}, False),
+        ('n', {'worksheet_path': WORKSHEET_PATH}, False),
+        ('n', {'worksheet_path': ''}, False),
+    ]
+)
+@patch("central_balancos_py.src.main.input")
+def test_statement_file_exists(mock_input, user_input, env, expected_result):
+    mock_input.return_value = user_input
+    assert expected_result == main.statement_file_exists(env)

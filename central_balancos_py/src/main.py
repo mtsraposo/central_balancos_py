@@ -67,13 +67,26 @@ def config():
     }
 
 
-def handle_extraction(env):
+def prompt_cnpj():
     selected_cnpj = input(
         'Which company would you like to extract? Please provide a valid CNPJ with only digits\n'
         'Enter a number or hit Enter to extract all (~8.5k):\n'
     )
     selected_cnpj = selected_cnpj if selected_cnpj != '' else None
-    if selected_cnpj is None or re.match(r'^\d+$', selected_cnpj):
+    valid = selected_cnpj is None or re.match(r'^\d+$', selected_cnpj) is not None
+    return selected_cnpj, valid
+
+
+def maybe_download_pdfs():
+    download_now = input(
+        '====== Extracted ======\nWould you like to download PDFs for all extracted documents now? [Y/n]')
+    if download_now in ['', 'Y']:
+        handle_download(env)
+
+
+def handle_extraction(env):
+    selected_cnpj, valid_cnpj = prompt_cnpj()
+    if valid_cnpj:
         logger.info('Extracting company info...\nThe worksheet will be available at '
                     f"{env['worksheet_path']}.")
         extract_company_info(
@@ -81,20 +94,22 @@ def handle_extraction(env):
             statements_sheet_name=env['statements_sheet_name'],
             selected_cnpj=selected_cnpj
         )
-        download_now = input(
-            '====== Extracted ======\nWould you like to download PDFs for all extracted documents now? [Y/n]')
-        if download_now in ['', 'Y']:
-            handle_download(env)
+        maybe_download_pdfs()
     else:
         raise ValueError(f'please input a valid number. "{selected_cnpj}" provided')
 
 
-def handle_download(env):
-    statement_file_exists = input(
+def statement_file_exists(env):
+    exists = input(
         f"Do you have a worksheet containing statement info "
         f"(generated in option 1 of the previous menu) "
         f"saved in your computer and located at {env['worksheet_path']}? [Y/n] \n")
-    if statement_file_exists in ['', 'Y'] and os.path.exists(env['worksheet_path']):
+
+    return exists in ['', 'y', 'Y'] and os.path.exists(env['worksheet_path'])
+
+
+def handle_download(env):
+    if statement_file_exists(env):
         input(f'If you would like to download all extracted statements, just hit enter.'
               f'Otherwise, please create a new tab in the statement info worksheet '
               f"and name it \"cnpjs\". Add the column header \"cnpj\" to cell A1 "
