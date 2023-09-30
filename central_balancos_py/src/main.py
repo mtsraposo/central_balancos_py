@@ -77,10 +77,10 @@ def prompt_cnpj():
     return selected_cnpj, valid
 
 
-def maybe_download_pdfs():
+def maybe_download_pdfs(env):
     download_now = input(
         '====== Extracted ======\nWould you like to download PDFs for all extracted documents now? [Y/n]')
-    if download_now in ['', 'Y']:
+    if download_now in ['', 'Y', 'y']:
         handle_download(env)
 
 

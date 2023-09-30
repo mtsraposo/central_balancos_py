@@ -135,6 +135,7 @@ def test_prompt_download_instructions(mock_input, user_input, expected_result):
     mock_input.return_value = user_input
     assert expected_result == main.prompt_download_instructions()
 
+
 @patch("central_balancos_py.src.main.input")
 @patch('central_balancos_py.src.pdfs.requests.get')
 def test_handle_download(mock_get, mock_input):
@@ -153,3 +154,35 @@ def test_handle_download(mock_get, mock_input):
     main.handle_download(env)
     assert len(os.listdir(PDFS_DIRECTORY)) == 3
     clean_up_pdf_directory()
+
+
+@pytest.mark.parametrize(
+    "user_input, should_download",
+    [
+        ('Y', True),
+        ('y', True),
+        ('', True),
+        ('n', False)
+    ]
+)
+@patch("central_balancos_py.src.main.input")
+@patch('central_balancos_py.src.pdfs.requests.get')
+def test_handle_download(mock_get, mock_input, user_input, should_download):
+    mock_input.return_value = user_input
+    env = {'worksheet_path': WORKSHEET_PATH,
+           'statements_sheet_name': 'demonstracoes',
+           'pdfs_directory': PDFS_DIRECTORY}
+
+    with open(SAMPLE_PDF_PATH, 'rb') as file:
+        mock_pdf_data = file.read()
+    mock_response = Mock()
+    mock_response.content = mock_pdf_data
+    mock_response.status_code = 200
+    mock_get.return_value = mock_response
+
+    main.maybe_download_pdfs(env)
+    if should_download:
+        assert len(os.listdir(PDFS_DIRECTORY)) == 3
+        clean_up_pdf_directory()
+    else:
+        assert not os.path.exists(PDFS_DIRECTORY)
