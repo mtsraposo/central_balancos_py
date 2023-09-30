@@ -42,30 +42,29 @@ def prompt_publish_date():
             return ''
 
 
-def config():
-    statements_sheet_name = 'demonstracoes'
-    working_directory = os.getcwd()
-    if is_on_correct_folder(working_directory):
-        current_dir = os.path.join(working_directory, 'central_balancos_py', 'src')
-    elif sys.argv[0]:
-        current_dir = os.path.dirname(sys.argv[0])
-    else:
-        raise RuntimeError('Please run this script from the root folder of the project '
-                           'if you are running it in script mode'
-                           'or from the src folder if you are in binary mode.')
-    logger.info(f'Working directory is: {current_dir}')
-    worksheet_path = os.path.join(current_dir, 'data', 'demonstracoes.xlsx')
-    pdfs_directory = os.path.join(current_dir, 'data', 'pdfs')
-    return {
-        'statements_sheet_name': statements_sheet_name,
-        'worksheet_path': worksheet_path,
-        'pdfs_directory': pdfs_directory
-    }
-
-
 def is_on_correct_folder(working_directory):
     (dirname, basename) = os.path.split(working_directory)
     return basename == 'central_balancos_py' and os.path.basename(dirname) != 'src'
+
+
+def resolve_working_directory():
+    working_directory = os.getcwd()
+    if is_on_correct_folder(working_directory):
+        return os.path.join(working_directory, 'central_balancos_py', 'src')
+    return os.path.dirname(sys.argv[0])
+
+
+def config():
+    current_dir = resolve_working_directory()
+    logger.info(f'Working directory is: {current_dir}')
+
+    worksheet_path = os.path.join(current_dir, 'data', 'demonstracoes.xlsx')
+    pdfs_directory = os.path.join(current_dir, 'data', 'pdfs')
+    return {
+        'statements_sheet_name': 'demonstracoes',
+        'worksheet_path': worksheet_path,
+        'pdfs_directory': pdfs_directory
+    }
 
 
 def handle_extraction(env):
