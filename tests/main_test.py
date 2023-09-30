@@ -1,12 +1,11 @@
 import os
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import pytest
 
 from central_balancos_py.src import main
-
-PROJECT_ROOT_PATH = '/Users/example/Downloads/central_balancos_py'
-WORKSHEET_PATH = os.path.join(os.getcwd(), 'tests', 'data', 'demonstracoes.xlsx')
+from tests.constants import PDFS_DIRECTORY, PROJECT_ROOT_PATH, SAMPLE_PDF_PATH, WORKSHEET_PATH
+from tests.util import clean_up_pdf_directory
 
 
 @pytest.mark.parametrize(
@@ -122,3 +121,35 @@ def test_prompt_cnpj(mock_input, user_input, expected_result):
 def test_statement_file_exists(mock_input, user_input, env, expected_result):
     mock_input.return_value = user_input
     assert expected_result == main.statement_file_exists(env)
+
+
+@pytest.mark.parametrize(
+    "user_input, expected_result",
+    [
+        ('', None),
+        ('a', None)
+    ]
+)
+@patch("central_balancos_py.src.main.input")
+def test_prompt_download_instructions(mock_input, user_input, expected_result):
+    mock_input.return_value = user_input
+    assert expected_result == main.prompt_download_instructions()
+
+@patch("central_balancos_py.src.main.input")
+@patch('central_balancos_py.src.pdfs.requests.get')
+def test_handle_download(mock_get, mock_input):
+    mock_input.return_value = ''
+    env = {'worksheet_path': WORKSHEET_PATH,
+           'statements_sheet_name': 'demonstracoes',
+           'pdfs_directory': PDFS_DIRECTORY}
+
+    with open(SAMPLE_PDF_PATH, 'rb') as file:
+        mock_pdf_data = file.read()
+    mock_response = Mock()
+    mock_response.content = mock_pdf_data
+    mock_response.status_code = 200
+    mock_get.return_value = mock_response
+
+    main.handle_download(env)
+    assert len(os.listdir(PDFS_DIRECTORY)) == 3
+    clean_up_pdf_directory()

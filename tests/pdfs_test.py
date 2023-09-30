@@ -11,7 +11,9 @@ import requests
 import central_balancos_py.src.pdfs as pdfs
 from central_balancos_py.src.client.error_handler import ErrorHandler
 from central_balancos_py.src.client.http import HttpClient
+from tests.constants import FILTERED_WORKSHEET_PATH, PDFS_DIRECTORY, SAMPLE_PDF_PATH
 from tests.support import factory
+from tests.util import clean_up_pdf_directory
 
 logging.basicConfig(level=logging.INFO,
                     format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
@@ -19,18 +21,6 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 http_client = HttpClient(error_handler=ErrorHandler(logger=logger))
-
-PDFS_DIRECTORY = os.path.join(os.getcwd(), 'tests', 'data', 'pdfs')
-
-
-def clean_up_pdf_directory():
-    if os.path.exists(PDFS_DIRECTORY):
-        pdfs_found = os.listdir(PDFS_DIRECTORY)
-        if len(pdfs_found) > 10:
-            raise RuntimeError("PDF directory path is likely corrupted. More than 10 files found. Aborting teardown...")
-        for file in os.listdir(PDFS_DIRECTORY):
-            os.remove(os.path.join(PDFS_DIRECTORY, file))
-        os.removedirs(PDFS_DIRECTORY)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -166,6 +156,7 @@ def test_filter_statements():
 
     assert statements.equals(pdfs.filter_statements(worksheet_path, statements_sheet_name))
 
+
 class MockResponse(requests.Response):
     def __init__(self, status_code):
         super().__init__()
@@ -175,14 +166,13 @@ class MockResponse(requests.Response):
 def mocked_requests_get(status_code):
     return MockResponse(status_code)
 
+
 class TestPDFEndpoint(TestCase):
 
     @patch('central_balancos_py.src.pdfs.requests.get')
     def test_fetch_pdf_success(self, mock_get):
         url = 'https://centraldebalancos.estaleiro.serpro.gov.br/centralbalancos/servicesapi/api/Demonstracao/pdf/77820'
-        sample_pdf_path = os.path.join(os.getcwd(), 'tests', 'data', 'sample.pdf')
-
-        with open(sample_pdf_path, 'rb') as file:
+        with open(SAMPLE_PDF_PATH, 'rb') as file:
             mock_pdf_data = file.read()
         mock_response = unittest.mock.Mock()
         mock_response.content = mock_pdf_data
@@ -215,8 +205,7 @@ class TestPDFEndpoint(TestCase):
         })
         statements['cnpj'] = statements['cnpj'].astype('string')
 
-        sample_pdf_path = os.path.join(os.getcwd(), 'tests', 'data', 'sample.pdf')
-        with open(sample_pdf_path, 'rb') as file:
+        with open(SAMPLE_PDF_PATH, 'rb') as file:
             mock_pdf_data = file.read()
         mock_response = unittest.mock.Mock()
         mock_response.content = mock_pdf_data
@@ -229,18 +218,16 @@ class TestPDFEndpoint(TestCase):
 
     @patch('central_balancos_py.src.pdfs.requests.get')
     def test_download_pdfs(self, mock_get):
-        sample_pdf_path = os.path.join(os.getcwd(), 'tests', 'data', 'sample.pdf')
-        worksheet_path = os.path.join(os.getcwd(), 'tests', 'data', 'demonstracoes_filtered.xlsx')
         statements_sheet_name = 'demonstracoes'
         statement_type = 'Balanço Patrimonial (BP)'
 
-        with open(sample_pdf_path, 'rb') as file:
+        with open(SAMPLE_PDF_PATH, 'rb') as file:
             mock_pdf_data = file.read()
         mock_response = unittest.mock.Mock()
         mock_response.content = mock_pdf_data
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
-        pdfs.download_pdfs(PDFS_DIRECTORY, worksheet_path, statements_sheet_name, statement_type)
+        pdfs.download_pdfs(PDFS_DIRECTORY, FILTERED_WORKSHEET_PATH, statements_sheet_name, statement_type)
         assert len(os.listdir(PDFS_DIRECTORY)) == 1
         clean_up_pdf_directory()

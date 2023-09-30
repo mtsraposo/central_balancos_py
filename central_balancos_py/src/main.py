@@ -108,13 +108,17 @@ def statement_file_exists(env):
     return exists in ['', 'y', 'Y'] and os.path.exists(env['worksheet_path'])
 
 
+def prompt_download_instructions():
+    input(f'If you would like to download all extracted statements, just hit enter.'
+          f'Otherwise, please create a new tab in the statement info worksheet '
+          f"and name it \"cnpjs\". Add the column header \"cnpj\" to cell A1 "
+          f"and fill in the remaining A-column cells with the list of CNPJs "
+          f"you would like to download PDFs from. Hit Enter when you're ready.\n")
+
+
 def handle_download(env):
     if statement_file_exists(env):
-        input(f'If you would like to download all extracted statements, just hit enter.'
-              f'Otherwise, please create a new tab in the statement info worksheet '
-              f"and name it \"cnpjs\". Add the column header \"cnpj\" to cell A1 "
-              f"and fill in the remaining A-column cells with the list of CNPJs "
-              f"you would like to download PDFs from. Hit Enter when you're ready.\n")
+        prompt_download_instructions()
         statement_type = prompt_statement_type()
         publish_date = prompt_publish_date()
         logger.info('Downloading PDFs...\n'
