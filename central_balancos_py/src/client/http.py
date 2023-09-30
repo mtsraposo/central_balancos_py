@@ -14,14 +14,5 @@ class HttpClient:
         response.raise_for_status()
         return response
 
-    def post(self, url, params=None, data=None):
-        decorated_post = self.error_handler(self._post)
-        return decorated_post(url, params, data)
-
-    def _post(self, url, params, data):
-        response = requests.post(url, params=params, data=data)
-        response.raise_for_status()
-        return response
-
 
 __ALL__ = ['HttpClient']
