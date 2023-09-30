@@ -3,8 +3,8 @@ import os
 import sys
 import logging
 
-from extract import extract_company_info
-from pdfs import download_pdfs
+from central_balancos_py.src.extract import extract_company_info
+from central_balancos_py.src.pdfs import download_pdfs
 
 green = "\x1b[32m"
 reset = "\x1b[0m"
@@ -74,7 +74,7 @@ def handle_extraction(env):
         'Enter a number or hit Enter to extract all (~8.5k):\n'
     )
     selected_cnpj = selected_cnpj if selected_cnpj != '' else None
-    if selected_cnpj is None or re.match('^\d+$', selected_cnpj):
+    if selected_cnpj is None or re.match(r'^\d+$', selected_cnpj):
         logger.info('Extracting company info...\nThe worksheet will be available at '
                     f"{env['worksheet_path']}.")
         extract_company_info(
