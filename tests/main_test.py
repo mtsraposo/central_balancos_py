@@ -62,3 +62,28 @@ def test_resolve_working_directory(mock_argv, mock_cwd, argv, working_directory,
     mock_cwd.return_value = working_directory
 
     assert expected_result == main.resolve_working_directory()
+
+
+@pytest.mark.parametrize(
+    "working_directory, argv, expected_result",
+    [
+        (PROJECT_ROOT_PATH, ['cmd'], {
+            'statements_sheet_name': 'demonstracoes',
+            'worksheet_path': f'{PROJECT_ROOT_PATH}/central_balancos_py/src/data/demonstracoes.xlsx',
+            'pdfs_directory': f'{PROJECT_ROOT_PATH}/central_balancos_py/src/data/pdfs'
+        }),
+        (f'{PROJECT_ROOT_PATH}/central_balancos_py/src/central_balancos_py', [PROJECT_ROOT_PATH],
+         {
+             'statements_sheet_name': 'demonstracoes',
+             'worksheet_path': '/Users/example/Downloads/data/demonstracoes.xlsx',
+             'pdfs_directory': '/Users/example/Downloads/data/pdfs'
+         })
+    ]
+)
+@patch("central_balancos_py.src.main.os.getcwd")
+@patch("central_balancos_py.src.main.sys.argv")
+def test_config(mock_argv, mock_cwd, argv, working_directory, expected_result):
+    mock_argv.__getitem__.side_effect = argv
+    mock_cwd.return_value = working_directory
+
+    assert expected_result == main.config()
