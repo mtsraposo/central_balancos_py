@@ -120,7 +120,7 @@ def to_df(rows):
 
 
 def to_excel(df, path, sheet_name):
-    folder = os.path.join(os.path.dirname(path))
+    folder = os.path.dirname(path)
     os.makedirs(folder, exist_ok=True)
 
     with pd.ExcelWriter(path, engine='xlsxwriter') as writer:

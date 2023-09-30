@@ -1,10 +1,11 @@
-import re
-import os
-import sys
 import logging
+import os
+import re
+import sys
 
 from central_balancos_py.src.extract import extract_company_info
 from central_balancos_py.src.pdfs import download_pdfs
+from central_balancos_py.src.constants import STATEMENTS_FILE_NAME
 
 green = "\x1b[32m"
 reset = "\x1b[0m"
@@ -58,7 +59,7 @@ def config():
     current_dir = resolve_working_directory()
     logger.info(f'Working directory is: {current_dir}')
 
-    worksheet_path = os.path.join(current_dir, 'data', 'demonstracoes.xlsx')
+    worksheet_path = os.path.join(current_dir, 'data', STATEMENTS_FILE_NAME)
     pdfs_directory = os.path.join(current_dir, 'data', 'pdfs')
     return {
         'statements_sheet_name': 'demonstracoes',
@@ -135,7 +136,7 @@ def handle_download(env):
                        f"{env['worksheet_path']} before proceeding.")
 
 
-if __name__ == '__main__':
+def run():
     env = config()
     selection = input('================= CENTRAL BALANCOS =================\n\n'
                       'Please choose one of the following options:\n'
@@ -148,3 +149,7 @@ if __name__ == '__main__':
             handle_download(env)
         case _:
             logger.warning('please enter a valid option (1 or 2)')
+
+
+if __name__ == '__main__':
+    run()

@@ -258,3 +258,52 @@ def test_handle_extraction(mock_input, mock_get):
 
     os.remove(TEMP_WORKSHEET_PATH)
     clean_up_pdf_directory()
+
+
+def mock_selection(text, selection):
+    print(text)
+    if 'Please choose one of the following options:' in text:
+        return selection
+    if 'Would you like to download PDFs for all extracted documents now?' in text:
+        return 'n'
+    return ''
+
+
+@pytest.mark.parametrize(
+    "selection",
+    ['1', '2', '']
+)
+@patch("central_balancos_py.src.main.config")
+@patch('central_balancos_py.src.client.http.requests.get')
+@patch("central_balancos_py.src.main.input")
+def test_run(mock_input, mock_get, mock_config, selection):
+    mock_input.side_effect = lambda text, *_args, **_kwargs: mock_selection(text, selection)
+    mock_get.side_effect = mock_requests_get
+
+    match selection:
+        case '1':
+            mock_config.return_value = {'worksheet_path': TEMP_WORKSHEET_PATH,
+                                        'statements_sheet_name': 'demonstracoes',
+                                        'pdfs_directory': PDFS_DIRECTORY}
+            main.run()
+
+            saved = pd.read_excel(TEMP_WORKSHEET_PATH, sheet_name='demonstracoes')
+            saved['cnpj'] = saved['cnpj'].astype('string')
+            expected = factory.statement_df()
+
+            assert saved.equals(expected)
+
+            os.remove(TEMP_WORKSHEET_PATH)
+        case '2':
+            mock_config.return_value = {'worksheet_path': READ_ONLY_WORKSHEET_PATH,
+                                        'statements_sheet_name': 'demonstracoes',
+                                        'pdfs_directory': PDFS_DIRECTORY}
+            main.run()
+
+            assert len(os.listdir(PDFS_DIRECTORY)) == 3
+            clean_up_pdf_directory()
+
+        case _:
+            main.run()
+            assert not os.path.exists(TEMP_WORKSHEET_PATH)
+            assert not os.path.exists(PDFS_DIRECTORY)
